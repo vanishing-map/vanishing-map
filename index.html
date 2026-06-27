@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>vanishing_map</title>
+  <link rel="icon" href="data:," />
   <style>
     :root {
       --bg: #f3efe6;
@@ -198,6 +199,50 @@
       color: var(--soft-ink);
     }
 
+    .period-control {
+      min-width: min(100%, 280px);
+      display: grid;
+      grid-template-columns: auto minmax(120px, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+    }
+
+    .period-control input[type="range"] {
+      width: 100%;
+      min-width: 120px;
+      accent-color: var(--arc-warm);
+    }
+
+    .period-value {
+      min-width: 64px;
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 12px;
+      font-weight: 950;
+      color: var(--ink);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .map-mode-button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--line);
+      color: var(--panel);
+      padding: 7px 11px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .map-mode-button[hidden] {
+      display: none;
+    }
+
     .map-wrap {
       position: relative;
       min-height: 560px;
@@ -232,6 +277,7 @@
       fill: rgba(255,253,245,.72);
       stroke: rgba(35,40,32,.42);
       stroke-width: 1.2;
+      cursor: pointer;
     }
 
     .province-ring.spotlight {
@@ -245,6 +291,7 @@
       stroke: var(--panel);
       stroke-width: 2.2;
       filter: url(#nodeShadow);
+      cursor: pointer;
     }
 
     .node.spotlight {
@@ -261,6 +308,29 @@
       stroke: rgba(255,253,245,.9);
       stroke-width: 4px;
       stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .zoom-land {
+      fill: rgba(255,253,245,.58);
+      stroke: rgba(35,40,32,.48);
+      stroke-width: 1.5;
+      filter: url(#landShadow);
+    }
+
+    .zoom-title {
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      fill: rgba(35,40,32,.84);
+      font-size: 22px;
+      font-weight: 950;
+    }
+
+    .empty-state {
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      fill: rgba(35,40,32,.68);
+      font-size: 15px;
+      font-weight: 850;
+      text-anchor: middle;
     }
 
     .arc-shadow {
@@ -516,6 +586,10 @@
         justify-content: flex-start;
       }
 
+      .period-control {
+        width: 100%;
+      }
+
       .legend {
         grid-template-columns: 1fr 1fr;
       }
@@ -535,8 +609,8 @@
         <h1>전국 이동 유량을 남한 지도 위 arc로 본다.</h1>
       </div>
       <div class="source-note">
-        <div><strong>2026년 5월</strong> 행정안전부 지역별 인구이동 현황, 시도 단위 17x17 OD 행렬.</div>
-        <div>3D 지구본 없이 남한 베이스맵 위에 솟는 곡선 arc만 표시한다.</div>
+        <div><strong id="periodLabel">2026년 5월</strong> 행정안전부 지역별 인구이동 현황, 시도 OD 월별 데이터.</div>
+        <div><span id="periodRangeLabel">2022년 10월부터 2026년 5월까지</span> API 제공 범위 안에서 시간축 슬라이더로 월을 바꾼다.</div>
         <span class="badge data-warning">공식 집계 데이터 · API 키 미저장</span>
       </div>
     </header>
@@ -549,7 +623,12 @@
             <div class="segmented" aria-label="flow count">
               <button type="button" data-count="30" class="active">TOP 30</button>
               <button type="button" data-count="80">TOP 80</button>
-              <button type="button" data-count="272">ALL</button>
+              <button type="button" data-count="9999">ALL</button>
+            </div>
+            <div class="period-control">
+              <span class="control-label">월</span>
+              <input id="periodSlider" type="range" min="0" max="0" value="0" step="1" aria-label="기준월 선택" disabled />
+              <span class="period-value" id="periodValue">-</span>
             </div>
             <div class="control-group">
               <span class="control-label">연령</span>
@@ -575,6 +654,7 @@
               <span class="control-label">지역</span>
               <select id="spotlightSelect" aria-label="지역 강조"></select>
             </div>
+            <button class="map-mode-button" type="button" id="drillUpButton" hidden>전국</button>
           </div>
         </div>
 
@@ -638,20 +718,21 @@
         <div class="readout">
           <span class="badge">visual contract</span>
           <strong>굵기는 선택한 필터의 유량, 색상은 특성 레이어 예약.</strong>
-          <div>기본 화면은 interregional OD만 사용한다. 같은 시도 내부 이동은 수치가 커서 전국 arc 해석을 압도하므로 제외했다.</div>
+          <div>전국 화면은 시간축 슬라이더로 선택한 월의 interregional OD만 사용한다.</div>
+          <div>공공데이터 API 안내 기준 조회 가능 시작월이 2022년 10월이라, 현재 파일은 2022년 10월부터 2026년 5월까지 44개월이다.</div>
+          <div>같은 시도 내부 이동은 수치가 커서 전국 arc 해석을 압도하므로 제외했다.</div>
           <div>연령과 성별 필터는 행정안전부 나이별 남녀 이동 집계에서 다시 만든 wide CSV를 기준으로 계산한다.</div>
-          <div>방향은 origin에서 destination으로 향하는 arc와 화살표로 표현한다. 색상은 방향 의미에 쓰지 않는다.</div>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>전출지</th>
-                <th>전입지</th>
+                <th id="tableHeadA">전출지</th>
+                <th id="tableHeadB">전입지</th>
                 <th id="valueHeader">이동량</th>
-                <th>남성</th>
-                <th>여성</th>
-                <th>기준월</th>
+                <th id="tableHeadC">남성</th>
+                <th id="tableHeadD">여성</th>
+                <th id="tableHeadE">기준월</th>
               </tr>
             </thead>
             <tbody id="flowRows"></tbody>
@@ -694,9 +775,15 @@
 경상남도,부산광역시,2861,population_movement,official_mois,202605,4800000000,2600000000
 인천광역시,서울특별시,2642,population_movement,official_mois,202605,2800000000,1100000000`;
 
+    let allSidoFlows = [];
     let flows = [];
+    let sigunguFlows = [];
+    let periods = [];
+    let activePeriod = "";
     let displayCount = 30;
     let spotlight = "전체";
+    let mapMode = "sido";
+    let selectedProvince = "";
     let ageGroup = "all";
     let gender = "all";
 
@@ -735,17 +822,66 @@
       return Number(value).toLocaleString("ko-KR");
     }
 
+    function periodText(period) {
+      const raw = String(period || "");
+      if (raw.length !== 6) return raw || "-";
+      return `${raw.slice(0, 4)}.${raw.slice(4, 6)}`;
+    }
+
+    function periodKorean(period) {
+      const raw = String(period || "");
+      if (raw.length !== 6) return raw || "-";
+      return `${raw.slice(0, 4)}년 ${Number(raw.slice(4, 6))}월`;
+    }
+
+    function normalizeSidoRows(rows) {
+      return rows
+        .filter((flow) => regionPoints[flow.origin] && regionPoints[flow.destination] && flow.origin !== flow.destination)
+        .sort((a, b) => String(a.period).localeCompare(String(b.period)) || b.people - a.people);
+    }
+
+    function setActivePeriod(period) {
+      activePeriod = String(period || periods[periods.length - 1] || "");
+      flows = allSidoFlows
+        .filter((flow) => String(flow.period) === activePeriod)
+        .sort((a, b) => b.people - a.people);
+      document.getElementById("periodLabel").textContent = periodKorean(activePeriod);
+      document.getElementById("periodValue").textContent = periodText(activePeriod);
+    }
+
+    function setupPeriodSlider() {
+      const slider = document.getElementById("periodSlider");
+      periods = Array.from(new Set(allSidoFlows.map((flow) => String(flow.period)))).sort();
+      slider.disabled = periods.length <= 1;
+      slider.min = 0;
+      slider.max = Math.max(periods.length - 1, 0);
+      slider.value = Math.max(periods.length - 1, 0);
+      const first = periods[0] || "";
+      const last = periods[periods.length - 1] || "";
+      document.getElementById("periodRangeLabel").textContent = first && last
+        ? `${periodKorean(first)}부터 ${periodKorean(last)}까지`
+        : "단월";
+      setActivePeriod(last);
+    }
+
     async function loadData() {
       try {
-        const response = await fetch("data/mois-ppltn-data-stus-sido-od-202605-age-gender.csv", { cache: "no-store" });
+        const response = await fetch("data/mois-ppltn-data-stus-sido-od-monthly-age-gender.csv", { cache: "no-store" });
         if (!response.ok) throw new Error("CSV fetch failed");
-        flows = parseCsv(await response.text());
+        allSidoFlows = normalizeSidoRows(parseCsv(await response.text()));
       } catch {
-        flows = parseCsv(fallbackCsv);
+        allSidoFlows = normalizeSidoRows(parseCsv(fallbackCsv));
       }
-      flows = flows
-        .filter((flow) => regionPoints[flow.origin] && regionPoints[flow.destination] && flow.origin !== flow.destination)
-        .sort((a, b) => b.people - a.people);
+      setupPeriodSlider();
+      try {
+        const response = await fetch("data/mois-ppltn-data-stus-sigungu-od-202605-age-gender.csv", { cache: "no-store" });
+        if (!response.ok) throw new Error("Sigungu CSV fetch failed");
+        sigunguFlows = parseCsv(await response.text())
+          .filter((flow) => flow.origin && flow.destination && flow.origin_province && flow.destination_province)
+          .sort((a, b) => b.people - a.people);
+      } catch {
+        sigunguFlows = [];
+      }
       populateSpotlight();
       render();
     }
@@ -765,6 +901,60 @@
         .filter((flow) => flowValue(flow) > 0)
         .sort((a, b) => flowValue(b) - flowValue(a))
         .slice(0, displayCount);
+    }
+
+    function provinceSigunguNames(province) {
+      const names = new Set();
+      sigunguFlows.forEach((flow) => {
+        if (flow.origin_province === province) names.add(flow.origin);
+        if (flow.destination_province === province) names.add(flow.destination);
+      });
+      return Array.from(names).sort((a, b) => a.localeCompare(b, "ko-KR"));
+    }
+
+    function sigunguStats(province) {
+      const stats = new Map();
+      provinceSigunguNames(province).forEach((name) => {
+        stats.set(name, { in: 0, out: 0, internalIn: 0, internalOut: 0, total: 0 });
+      });
+      sigunguFlows.forEach((flow) => {
+        const value = flowValue(flow);
+        if (value <= 0) return;
+        const internal = flow.origin_province === province && flow.destination_province === province;
+        if (flow.destination_province === province && stats.has(flow.destination)) {
+          const stat = stats.get(flow.destination);
+          stat.in += value;
+          stat.total += value;
+          if (internal) stat.internalIn += value;
+        }
+        if (flow.origin_province === province && stats.has(flow.origin)) {
+          const stat = stats.get(flow.origin);
+          stat.out += value;
+          stat.total += value;
+          if (internal) stat.internalOut += value;
+        }
+      });
+      return stats;
+    }
+
+    function activeSigunguFlows() {
+      if (!selectedProvince) return [];
+      return sigunguFlows
+        .filter((flow) => (
+          flow.origin_province === selectedProvince &&
+          flow.destination_province === selectedProvince &&
+          flow.origin_code !== flow.destination_code &&
+          flowValue(flow) > 0
+        ))
+        .sort((a, b) => flowValue(b) - flowValue(a))
+        .slice(0, displayCount);
+    }
+
+    function sigunguRows() {
+      if (!selectedProvince) return [];
+      return Array.from(sigunguStats(selectedProvince).entries())
+        .map(([name, stat]) => ({ name, ...stat, net: stat.in - stat.out }))
+        .sort((a, b) => b.total - a.total);
     }
 
     function metricKey() {
@@ -835,6 +1025,14 @@
     }
 
     function renderMap() {
+      if (mapMode === "sigungu") {
+        renderSigunguMap();
+        return;
+      }
+      renderSidoMap();
+    }
+
+    function renderSidoMap() {
       const shown = activeFlows();
       const maxPeople = Math.max(...shown.map((flow) => flowValue(flow)), 1);
       const stats = hubStats(flows);
@@ -847,7 +1045,7 @@
 
       provinceLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
         const size = nodeSize(stats.get(name).total, maxHub) + 15;
-        return `<circle class="province-ring ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${size}"></circle>`;
+        return `<circle class="province-ring ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${size}" data-region="${name}"></circle>`;
       }).join("");
 
       shadowLayer.innerHTML = shown.map((flow) => {
@@ -870,13 +1068,102 @@
         const labelX = point.x + r + 5;
         const labelY = point.y + 4;
         return `
-          <circle class="node ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${r}"></circle>
-          <text class="node-label" x="${labelX}" y="${labelY}">${point.label}</text>
+          <g data-region="${name}">
+            <circle class="node ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${r}"></circle>
+            <text class="node-label" x="${labelX}" y="${labelY}">${point.label}</text>
+          </g>
+        `;
+      }).join("");
+    }
+
+    function sigunguLayout(province, stats) {
+      const rows = Array.from(stats.entries()).sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0], "ko-KR"));
+      const points = new Map();
+      const cx = 450;
+      const cy = 386;
+      rows.forEach(([name], index) => {
+        if (index === 0) {
+          points.set(name, { x: cx, y: cy, label: name });
+          return;
+        }
+        const angle = index * 2.3999632297;
+        const band = Math.sqrt(index);
+        const x = cx + Math.cos(angle) * Math.min(300, 54 + band * 52);
+        const y = cy + Math.sin(angle) * Math.min(218, 42 + band * 38);
+        points.set(name, { x, y, label: name });
+      });
+      return points;
+    }
+
+    function sigunguArcPath(flow, points, people, maxPeople) {
+      const a = points.get(flow.origin);
+      const b = points.get(flow.destination);
+      if (!a || !b) return "";
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      const lift = Math.min(145, Math.max(28, dist * .22 + thickness(people, maxPeople) * 3));
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2 - lift;
+      const side = dx >= 0 ? 1 : -1;
+      return `M ${a.x} ${a.y} Q ${mx + side * 18} ${my}, ${b.x} ${b.y}`;
+    }
+
+    function renderSigunguMap() {
+      const province = selectedProvince;
+      const stats = sigunguStats(province);
+      const rows = Array.from(stats.entries());
+      const shown = activeSigunguFlows();
+      const points = sigunguLayout(province, stats);
+      const maxPeople = Math.max(...shown.map((flow) => flowValue(flow)), 1);
+      const maxHub = Math.max(...rows.map(([, stat]) => stat.total), 1);
+
+      const provinceLayer = document.getElementById("provinceLayer");
+      const shadowLayer = document.getElementById("shadowLayer");
+      const arcLayer = document.getElementById("arcLayer");
+      const nodeLayer = document.getElementById("nodeLayer");
+
+      provinceLayer.innerHTML = `
+        <path class="zoom-land" d="M174 142 C270 70 507 62 651 116 C776 163 809 283 761 412 C719 526 613 640 453 658 C291 677 154 598 118 468 C82 337 83 210 174 142 Z"></path>
+        <text class="zoom-title" x="70" y="78">${regionPoints[province]?.label || province} 시군구</text>
+      `;
+
+      if (!rows.length) {
+        shadowLayer.innerHTML = "";
+        arcLayer.innerHTML = "";
+        nodeLayer.innerHTML = `<text class="empty-state" x="450" y="384">시군구 OD CSV가 아직 없습니다.</text>`;
+        return;
+      }
+
+      shadowLayer.innerHTML = shown.map((flow) => {
+        const value = flowValue(flow);
+        const path = sigunguArcPath(flow, points, value, maxPeople);
+        return path ? `<path class="arc-shadow" d="${path}" stroke-width="${thickness(value, maxPeople)}"></path>` : "";
+      }).join("");
+
+      arcLayer.innerHTML = shown.map((flow) => {
+        const value = flowValue(flow);
+        const path = sigunguArcPath(flow, points, value, maxPeople);
+        return path ? `<path class="arc highlight" d="${path}" stroke="var(--arc-warm)" stroke-width="${thickness(value, maxPeople)}"></path>` : "";
+      }).join("");
+
+      nodeLayer.innerHTML = rows.map(([name, stat]) => {
+        const point = points.get(name);
+        const r = nodeSize(stat.total, maxHub);
+        const netClass = stat.in >= stat.out ? "spotlight" : "";
+        return `
+          <circle class="province-ring" cx="${point.x}" cy="${point.y}" r="${r + 12}"></circle>
+          <circle class="node ${netClass}" cx="${point.x}" cy="${point.y}" r="${r}"></circle>
+          <text class="node-label" x="${point.x + r + 5}" y="${point.y + 4}">${name}</text>
         `;
       }).join("");
     }
 
     function renderMetrics() {
+      if (mapMode === "sigungu") {
+        renderSigunguMetrics();
+        return;
+      }
       const shown = activeFlows();
       const stats = hubStats(flows);
       const total = shown.reduce((sum, flow) => sum + flowValue(flow), 0);
@@ -890,8 +1177,31 @@
       document.getElementById("maxHub").textContent = topHub ? regionPoints[topHub[0]].label : "-";
     }
 
+    function renderSigunguMetrics() {
+      const shown = activeSigunguFlows();
+      const rows = sigunguRows();
+      const totalIn = rows.reduce((sum, row) => sum + row.in, 0);
+      const maxFlow = shown[0] ? flowValue(shown[0]) : 0;
+      const topHub = rows[0];
+      document.getElementById("panelTitle").textContent = `${regionPoints[selectedProvince]?.label || selectedProvince} 시군구`;
+      document.getElementById("rowCount").textContent = metricLabel();
+      document.getElementById("visibleCount").textContent = fmt(shown.length);
+      document.getElementById("visiblePeople").textContent = fmt(totalIn);
+      document.getElementById("maxFlow").textContent = fmt(maxFlow);
+      document.getElementById("maxHub").textContent = topHub ? topHub.name : "-";
+    }
+
     function renderLists() {
+      if (mapMode === "sigungu") {
+        renderSigunguLists();
+        return;
+      }
       const shown = activeFlows();
+      document.getElementById("tableHeadA").textContent = "전출지";
+      document.getElementById("tableHeadB").textContent = "전입지";
+      document.getElementById("tableHeadC").textContent = "남성";
+      document.getElementById("tableHeadD").textContent = "여성";
+      document.getElementById("tableHeadE").textContent = "기준월";
       document.getElementById("flowList").innerHTML = shown.slice(0, 18).map((flow) => `
         <div class="flow-row">
           <strong title="${flow.origin}">${regionPoints[flow.origin].label}</strong>
@@ -909,15 +1219,71 @@
           <td>${fmt(flowValue(flow))}</td>
           <td>${fmt(ageGroup === "all" ? flow.male : flow[`${ageGroup}_male`])}</td>
           <td>${fmt(ageGroup === "all" ? flow.female : flow[`${ageGroup}_female`])}</td>
-          <td>${flow.period || "202605"}</td>
+          <td>${periodText(flow.period || activePeriod)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSigunguLists() {
+      const shown = activeSigunguFlows();
+      const rows = sigunguRows();
+      document.getElementById("flowList").innerHTML = shown.length ? shown.slice(0, 18).map((flow) => `
+        <div class="flow-row">
+          <strong title="${flow.origin}">${flow.origin}</strong>
+          <span class="mini-arrow"></span>
+          <strong title="${flow.destination}">${flow.destination}</strong>
+          <span class="value">${fmt(flowValue(flow))}</span>
+        </div>
+      `).join("") : `<div class="flow-row"><strong>시군구 내부 이동 없음</strong><span></span><strong></strong><span class="value">-</span></div>`;
+
+      document.getElementById("tableHeadA").textContent = "시군구";
+      document.getElementById("tableHeadB").textContent = "전입";
+      document.getElementById("valueHeader").textContent = "전출";
+      document.getElementById("tableHeadC").textContent = "순이동";
+      document.getElementById("tableHeadD").textContent = "내부전입";
+      document.getElementById("tableHeadE").textContent = "기준월";
+      document.getElementById("flowRows").innerHTML = rows.map((row) => `
+        <tr>
+          <td>${row.name}</td>
+          <td>${fmt(row.in)}</td>
+          <td>${fmt(row.out)}</td>
+          <td>${fmt(row.net)}</td>
+          <td>${fmt(row.internalIn)}</td>
+          <td>${periodText(activePeriod || "202605")}</td>
         </tr>
       `).join("");
     }
 
     function render() {
+      document.getElementById("drillUpButton").hidden = mapMode !== "sigungu";
       renderMap();
       renderMetrics();
       renderLists();
+    }
+
+    function enterProvince(name) {
+      if (!regionPoints[name]) return;
+      selectedProvince = name;
+      spotlight = name;
+      mapMode = "sigungu";
+      document.getElementById("spotlightSelect").value = name;
+      render();
+    }
+
+    function exitProvince() {
+      mapMode = "sido";
+      selectedProvince = "";
+      spotlight = "전체";
+      document.getElementById("spotlightSelect").value = "전체";
+      render();
+    }
+
+    function setRegion(name) {
+      if (name === "전체") {
+        exitProvince();
+        return;
+      }
+      enterProvince(name);
     }
 
     document.querySelectorAll("[data-count]").forEach((button) => {
@@ -930,8 +1296,24 @@
     });
 
     document.getElementById("spotlightSelect").addEventListener("change", (event) => {
-      spotlight = event.target.value;
+      setRegion(event.target.value);
+    });
+
+    document.getElementById("drillUpButton").addEventListener("click", () => {
+      exitProvince();
+    });
+
+    document.getElementById("periodSlider").addEventListener("input", (event) => {
+      setActivePeriod(periods[Number(event.target.value)]);
+      if (mapMode === "sigungu") exitProvince();
       render();
+    });
+
+    document.getElementById("flowMap").addEventListener("click", (event) => {
+      if (mapMode !== "sido") return;
+      const target = event.target.closest("[data-region]");
+      if (!target) return;
+      enterProvince(target.dataset.region);
     });
 
     document.getElementById("ageSelect").addEventListener("change", (event) => {

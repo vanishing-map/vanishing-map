@@ -1,0 +1,28 @@
+{
+  "source": "행정안전부_지역별 인구이동 현황",
+  "endpoint": "https://apis.data.go.kr/1741000/ppltnDataStus/selectPpltnDataStus",
+  "period_start": "202210",
+  "period_end": "202605",
+  "level": "sido",
+  "region_count": 17,
+  "months_requested": 44,
+  "requested_pairs": 4335,
+  "normalized_rows": 12716,
+  "interregional_rows": 11968,
+  "age_bins": [
+    "age_0_14",
+    "age_15_24",
+    "age_25_39",
+    "age_40_54",
+    "age_55_64",
+    "age_65_plus"
+  ],
+  "gender_fields": [
+    "all",
+    "male",
+    "female"
+  ],
+  "error_count": 0,
+  "errors": [],
+  "api_key_saved": false
+}
