@@ -1,0 +1,19 @@
+{
+  "source": "KOSIS",
+  "table_id": "DT_1B26001_A01",
+  "table_name": "시군구별 이동자수",
+  "requested_at": "2026-06-27",
+  "periods": [
+    "202512",
+    "202601",
+    "202602",
+    "202603",
+    "202604",
+    "202605"
+  ],
+  "region_count": 18,
+  "row_count_raw": 864,
+  "row_count_monthly_normalized": 108,
+  "warning": "Provided KOSIS URL currently returns 전국 + 시도 rows only because objL1 includes 18 top-level codes and objL2 is empty. This is not origin-destination flow data.",
+  "api_key_saved": false
+}

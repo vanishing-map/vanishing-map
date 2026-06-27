@@ -1,0 +1,14 @@
+{
+  "source": "행정안전부_지역별 인구이동 현황",
+  "endpoint": "https://apis.data.go.kr/1741000/ppltnDataStus/selectPpltnDataStus",
+  "period": "202605",
+  "level": "sido",
+  "region_count": 17,
+  "requested_pairs": 289,
+  "normalized_rows": 289,
+  "nonzero_flow_rows": 289,
+  "error_count": 0,
+  "errors": [],
+  "api_key_saved": false,
+  "notes": "mvt* fields are origin/departure; mvin* fields are destination/in-migration."
+}

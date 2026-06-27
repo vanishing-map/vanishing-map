@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vanishing_map</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --ink: #151915;
+      --soft-ink: #596057;
+      --panel: #fffdf5;
+      --line: #232820;
+      --map-land: #d8ddce;
+      --map-edge: #9ca98f;
+      --water: #dfeaf0;
+      --arc: #077b72;
+      --arc-warm: #c15b2a;
+      --arc-cool: #285a9b;
+      --arc-gold: #b1811f;
+      --shadow: 0 24px 60px rgba(22, 25, 21, .16);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(21,25,21,.05) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(rgba(21,25,21,.045) 1px, transparent 1px) 0 0 / 38px 38px,
+        radial-gradient(circle at 88% 16%, rgba(193,91,42,.16), transparent 22rem),
+        radial-gradient(circle at 14% 86%, rgba(7,123,114,.12), transparent 24rem),
+        var(--bg);
+      font-family: Georgia, "Apple SD Gothic Neo", "Noto Serif KR", serif;
+      letter-spacing: 0;
+    }
+
+    button, select, input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.15fr) minmax(280px, .85fr);
+      gap: 28px;
+      align-items: end;
+      padding: 28px 34px 20px;
+      border-bottom: 1px solid rgba(35,40,32,.28);
+      background: rgba(243,239,230,.88);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tagline {
+      width: fit-content;
+      padding: 5px 9px 4px;
+      border: 1px solid var(--line);
+      background: var(--line);
+      color: var(--panel);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 940px;
+      font-size: clamp(36px, 5vw, 78px);
+      line-height: .92;
+      font-weight: 900;
+      text-wrap: balance;
+    }
+
+    .source-note {
+      display: grid;
+      gap: 10px;
+      color: var(--soft-ink);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .source-note strong {
+      color: var(--ink);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(330px, 420px);
+      gap: 18px;
+      padding: 18px 34px 34px;
+    }
+
+    .map-stage,
+    .side-panel,
+    .bottom-panel {
+      border: 1px solid var(--line);
+      background: rgba(255,253,245,.92);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .map-stage {
+      min-height: calc(100vh - 184px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .stage-bar,
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #ece3d1;
+    }
+
+    .stage-bar h2,
+    .panel-head h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.15;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .segmented {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .segmented button {
+      min-height: 34px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .segmented button:last-child { border-right: 0; }
+    .segmented button.active {
+      background: var(--line);
+      color: var(--panel);
+    }
+
+    select {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 6px 30px 6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--soft-ink);
+    }
+
+    .map-wrap {
+      position: relative;
+      min-height: 560px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.35), transparent 40%),
+        var(--water);
+      overflow: hidden;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 560px;
+    }
+
+    .sea-label {
+      fill: rgba(35,40,32,.26);
+      font-size: 11px;
+      letter-spacing: .08em;
+      font-weight: 800;
+    }
+
+    .land {
+      fill: var(--map-land);
+      stroke: var(--map-edge);
+      stroke-width: 1.4;
+      filter: url(#landShadow);
+    }
+
+    .province-ring {
+      fill: rgba(255,253,245,.72);
+      stroke: rgba(35,40,32,.42);
+      stroke-width: 1.2;
+    }
+
+    .province-ring.spotlight {
+      stroke: #151915;
+      stroke-width: 2.2;
+      fill: #fff3d3;
+    }
+
+    .node {
+      fill: #172018;
+      stroke: var(--panel);
+      stroke-width: 2.2;
+      filter: url(#nodeShadow);
+    }
+
+    .node.spotlight {
+      fill: #c15b2a;
+      stroke-width: 3;
+    }
+
+    .node-label {
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      fill: var(--ink);
+      paint-order: stroke;
+      stroke: rgba(255,253,245,.9);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }
+
+    .arc-shadow {
+      fill: none;
+      stroke: rgba(21,25,21,.18);
+      stroke-linecap: round;
+      transform: translate(2px, 9px);
+    }
+
+    .arc {
+      fill: none;
+      stroke-linecap: round;
+      filter: url(#arcGlow);
+      opacity: .9;
+      marker-end: url(#arrow);
+    }
+
+    .arc.dimmed {
+      opacity: .15;
+      stroke: #7d8777 !important;
+    }
+
+    .arc.highlight {
+      opacity: .98;
+      filter: url(#arcGlowStrong);
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+      background: #f7f1e5;
+      font-size: 12px;
+      color: var(--soft-ink);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-weight: 750;
+    }
+
+    .sample-line {
+      width: 38px;
+      height: 0;
+      border-top: 5px solid var(--arc);
+      border-radius: 999px;
+    }
+
+    .sample-line.thin { border-top-width: 2px; }
+    .sample-line.warm { border-color: var(--arc-warm); }
+    .sample-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--line);
+      display: inline-block;
+    }
+
+    .side-panel {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      min-height: calc(100vh - 184px);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric {
+      min-height: 104px;
+      padding: 14px;
+      display: grid;
+      align-content: space-between;
+      border-right: 1px solid var(--line);
+    }
+
+    .metric:nth-child(2n) { border-right: 0; }
+    .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .metric span {
+      color: var(--soft-ink);
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .metric b {
+      font-size: clamp(24px, 3vw, 40px);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flow-list {
+      overflow: auto;
+      padding: 0;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(35,40,32,.16);
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 13px;
+    }
+
+    .flow-row strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mini-arrow {
+      width: 24px;
+      height: 1px;
+      background: var(--line);
+      position: relative;
+    }
+
+    .mini-arrow::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: -4px;
+      border-left: 7px solid var(--line);
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+
+    .value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .bottom-panel {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(260px, .65fr) minmax(420px, 1.35fr);
+    }
+
+    .readout {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      border-right: 1px solid var(--line);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .readout strong {
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 300px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(35,40,32,.16);
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #ece3d1;
+      color: #343b31;
+      font-size: 11px;
+      letter-spacing: .03em;
+    }
+
+    th:first-child,
+    th:nth-child(2),
+    td:first-child,
+    td:nth-child(2) {
+      text-align: left;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      background: var(--panel);
+      color: var(--ink);
+    }
+
+    .data-warning {
+      color: #fdf7e9;
+      background: #9d3f26;
+      border-color: #9d3f26;
+    }
+
+    @media (max-width: 980px) {
+      header,
+      main,
+      .bottom-panel {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        position: static;
+        padding: 24px 18px 18px;
+      }
+
+      main {
+        padding: 16px;
+      }
+
+      .map-stage,
+      .side-panel {
+        min-height: auto;
+      }
+
+      .map-wrap,
+      svg {
+        min-height: 520px;
+      }
+
+      .stage-bar {
+        display: grid;
+        align-items: start;
+      }
+
+      .controls {
+        justify-content: flex-start;
+      }
+
+      .legend {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .readout {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <span class="tagline">vanishing_map / official MOIS OD</span>
+        <h1>전국 이동 유량을 남한 지도 위 arc로 본다.</h1>
+      </div>
+      <div class="source-note">
+        <div><strong>2026년 5월</strong> 행정안전부 지역별 인구이동 현황, 시도 단위 17x17 OD 행렬.</div>
+        <div>3D 지구본 없이 남한 베이스맵 위에 솟는 곡선 arc만 표시한다.</div>
+        <span class="badge data-warning">공식 집계 데이터 · API 키 미저장</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="map-stage">
+        <div class="stage-bar">
+          <h2>South Korea flow arc map</h2>
+          <div class="controls">
+            <div class="segmented" aria-label="flow count">
+              <button type="button" data-count="30" class="active">TOP 30</button>
+              <button type="button" data-count="80">TOP 80</button>
+              <button type="button" data-count="272">ALL</button>
+            </div>
+            <div class="control-group">
+              <span class="control-label">연령</span>
+              <select id="ageSelect" aria-label="연령 필터">
+                <option value="all">전체</option>
+                <option value="age_0_14">0-14</option>
+                <option value="age_15_24">15-24</option>
+                <option value="age_25_39">25-39</option>
+                <option value="age_40_54">40-54</option>
+                <option value="age_55_64">55-64</option>
+                <option value="age_65_plus">65+</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <span class="control-label">성별</span>
+              <select id="genderSelect" aria-label="성별 필터">
+                <option value="all">전체</option>
+                <option value="male">남성</option>
+                <option value="female">여성</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <span class="control-label">지역</span>
+              <select id="spotlightSelect" aria-label="지역 강조"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-wrap">
+          <svg id="flowMap" viewBox="0 0 900 760" role="img" aria-label="대한민국 시도 간 인구이동 arc 지도">
+            <defs>
+              <filter id="landShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#172018" flood-opacity=".16" />
+              </filter>
+              <filter id="nodeShadow" x="-60%" y="-60%" width="220%" height="220%">
+                <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#172018" flood-opacity=".28" />
+              </filter>
+              <filter id="arcGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="2.3" flood-color="#073b36" flood-opacity=".28" />
+              </filter>
+              <filter id="arcGlowStrong" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="6" stdDeviation="3.2" flood-color="#073b36" flood-opacity=".4" />
+              </filter>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L7,3 z" fill="#077b72"></path>
+              </marker>
+            </defs>
+
+            <rect x="0" y="0" width="900" height="760" fill="transparent"></rect>
+            <text x="92" y="150" class="sea-label">YELLOW SEA</text>
+            <text x="698" y="206" class="sea-label">EAST SEA</text>
+            <text x="650" y="690" class="sea-label">KOREA STRAIT</text>
+            <path class="land" d="M442 44 C493 72 528 112 542 161 C554 205 596 220 613 266 C632 319 603 348 626 398 C651 452 622 499 584 527 C548 552 543 584 512 621 C477 662 423 667 386 635 C349 604 356 564 320 535 C276 499 280 450 308 410 C335 372 315 336 337 293 C359 250 331 207 352 169 C373 130 388 82 442 44 Z"></path>
+            <path class="land" d="M374 687 C409 667 456 668 492 692 C470 725 416 732 374 711 Z"></path>
+
+            <g id="provinceLayer"></g>
+            <g id="shadowLayer"></g>
+            <g id="arcLayer"></g>
+            <g id="nodeLayer"></g>
+          </svg>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="sample-line thin"></span><span>적은 이동량</span></div>
+          <div class="legend-item"><span class="sample-line"></span><span>큰 이동량</span></div>
+          <div class="legend-item"><span class="sample-line warm"></span><span>강조 지역</span></div>
+          <div class="legend-item"><span class="sample-dot"></span><span>총 유입·유출 허브</span></div>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="panel-head">
+          <h2 id="panelTitle">전체 흐름</h2>
+          <span class="badge" id="rowCount">-</span>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><span>표시 흐름</span><b id="visibleCount">-</b></div>
+          <div class="metric"><span>총 이동량</span><b id="visiblePeople">-</b></div>
+          <div class="metric"><span>최대 arc</span><b id="maxFlow">-</b></div>
+          <div class="metric"><span>최대 허브</span><b id="maxHub">-</b></div>
+        </div>
+        <div class="flow-list" id="flowList"></div>
+      </aside>
+
+      <section class="bottom-panel">
+        <div class="readout">
+          <span class="badge">visual contract</span>
+          <strong>굵기는 선택한 필터의 유량, 색상은 특성 레이어 예약.</strong>
+          <div>기본 화면은 interregional OD만 사용한다. 같은 시도 내부 이동은 수치가 커서 전국 arc 해석을 압도하므로 제외했다.</div>
+          <div>연령과 성별 필터는 행정안전부 나이별 남녀 이동 집계에서 다시 만든 wide CSV를 기준으로 계산한다.</div>
+          <div>방향은 origin에서 destination으로 향하는 arc와 화살표로 표현한다. 색상은 방향 의미에 쓰지 않는다.</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>전출지</th>
+                <th>전입지</th>
+                <th id="valueHeader">이동량</th>
+                <th>남성</th>
+                <th>여성</th>
+                <th>기준월</th>
+              </tr>
+            </thead>
+            <tbody id="flowRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const regionPoints = {
+      "서울특별시": { x: 418, y: 190, label: "서울" },
+      "인천광역시": { x: 350, y: 211, label: "인천" },
+      "경기도": { x: 430, y: 240, label: "경기" },
+      "강원특별자치도": { x: 533, y: 210, label: "강원" },
+      "충청북도": { x: 477, y: 330, label: "충북" },
+      "충청남도": { x: 382, y: 360, label: "충남" },
+      "세종특별자치시": { x: 433, y: 374, label: "세종" },
+      "대전광역시": { x: 438, y: 408, label: "대전" },
+      "경상북도": { x: 553, y: 405, label: "경북" },
+      "대구광역시": { x: 553, y: 478, label: "대구" },
+      "울산광역시": { x: 636, y: 528, label: "울산" },
+      "부산광역시": { x: 598, y: 574, label: "부산" },
+      "경상남도": { x: 505, y: 548, label: "경남" },
+      "전북특별자치도": { x: 392, y: 478, label: "전북" },
+      "광주광역시": { x: 353, y: 568, label: "광주" },
+      "전라남도": { x: 352, y: 616, label: "전남" },
+      "제주특별자치도": { x: 432, y: 704, label: "제주" }
+    };
+
+    const fallbackCsv = `origin,destination,people,reason_group,source_status,period,origin_code,destination_code
+서울특별시,경기도,22229,population_movement,official_mois,202605,1100000000,4100000000
+경기도,서울특별시,18020,population_movement,official_mois,202605,4100000000,1100000000
+경기도,인천광역시,5274,population_movement,official_mois,202605,4100000000,2800000000
+인천광역시,경기도,4518,population_movement,official_mois,202605,2800000000,4100000000
+서울특별시,인천광역시,3401,population_movement,official_mois,202605,1100000000,2800000000
+경상북도,대구광역시,3219,population_movement,official_mois,202605,4700000000,2700000000
+경기도,충청남도,3089,population_movement,official_mois,202605,4100000000,4400000000
+부산광역시,경상남도,2965,population_movement,official_mois,202605,2600000000,4800000000
+경상남도,부산광역시,2861,population_movement,official_mois,202605,4800000000,2600000000
+인천광역시,서울특별시,2642,population_movement,official_mois,202605,2800000000,1100000000`;
+
+    let flows = [];
+    let displayCount = 30;
+    let spotlight = "전체";
+    let ageGroup = "all";
+    let gender = "all";
+
+    const ageLabels = {
+      all: "전체",
+      age_0_14: "0-14",
+      age_15_24: "15-24",
+      age_25_39: "25-39",
+      age_40_54: "40-54",
+      age_55_64: "55-64",
+      age_65_plus: "65+"
+    };
+
+    const genderLabels = {
+      all: "전체",
+      male: "남성",
+      female: "여성"
+    };
+
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      const headers = lines.shift().split(",").map((h) => h.trim());
+      return lines.map((line) => {
+        const values = line.split(",").map((v) => v.trim());
+        const row = {};
+        headers.forEach((h, i) => {
+          const value = values[i] ?? "";
+          row[h] = /^-?\d+(\.\d+)?$/.test(value) ? Number(value) : value;
+        });
+        return row;
+      });
+    }
+
+    function fmt(value) {
+      if (value === undefined || value === null || Number.isNaN(value)) return "-";
+      return Number(value).toLocaleString("ko-KR");
+    }
+
+    async function loadData() {
+      try {
+        const response = await fetch("data/mois-ppltn-data-stus-sido-od-202605-age-gender.csv", { cache: "no-store" });
+        if (!response.ok) throw new Error("CSV fetch failed");
+        flows = parseCsv(await response.text());
+      } catch {
+        flows = parseCsv(fallbackCsv);
+      }
+      flows = flows
+        .filter((flow) => regionPoints[flow.origin] && regionPoints[flow.destination] && flow.origin !== flow.destination)
+        .sort((a, b) => b.people - a.people);
+      populateSpotlight();
+      render();
+    }
+
+    function populateSpotlight() {
+      const names = ["전체", ...Object.keys(regionPoints)];
+      document.getElementById("spotlightSelect").innerHTML = names
+        .map((name) => `<option value="${name}">${name === "전체" ? "전체 흐름" : name}</option>`)
+        .join("");
+    }
+
+    function activeFlows() {
+      const base = spotlight === "전체"
+        ? flows
+        : flows.filter((flow) => flow.origin === spotlight || flow.destination === spotlight);
+      return base
+        .filter((flow) => flowValue(flow) > 0)
+        .sort((a, b) => flowValue(b) - flowValue(a))
+        .slice(0, displayCount);
+    }
+
+    function metricKey() {
+      if (ageGroup === "all" && gender === "all") return "people";
+      if (ageGroup === "all") return gender;
+      if (gender === "all") return ageGroup;
+      return `${ageGroup}_${gender}`;
+    }
+
+    function flowValue(flow) {
+      return Number(flow[metricKey()] || 0);
+    }
+
+    function metricLabel() {
+      if (ageGroup === "all" && gender === "all") return "전체 이동량";
+      return `${ageLabels[ageGroup]} · ${genderLabels[gender]}`;
+    }
+
+    function hubStats(sourceFlows) {
+      const stats = new Map();
+      Object.keys(regionPoints).forEach((name) => stats.set(name, { in: 0, out: 0, total: 0 }));
+      sourceFlows.forEach((flow) => {
+        const value = flowValue(flow);
+        if (value <= 0) return;
+        const out = stats.get(flow.origin);
+        const incoming = stats.get(flow.destination);
+        out.out += value;
+        out.total += value;
+        incoming.in += value;
+        incoming.total += value;
+      });
+      return stats;
+    }
+
+    function thickness(value, max) {
+      const safeMax = Math.max(max, 1);
+      return 1.6 + (Math.log1p(value) / Math.log1p(safeMax)) * 13;
+    }
+
+    function nodeSize(value, max) {
+      const safeMax = Math.max(max, 1);
+      return 5 + (Math.sqrt(value) / Math.sqrt(safeMax)) * 18;
+    }
+
+    function arcPath(origin, destination, people, maxPeople) {
+      const a = regionPoints[origin];
+      const b = regionPoints[destination];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      const lift = Math.min(190, Math.max(42, dist * .34 + thickness(people, maxPeople) * 4));
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2 - lift;
+      const side = dx >= 0 ? 1 : -1;
+      const c1x = (a.x + mx) / 2 + side * 18;
+      const c1y = (a.y + my) / 2;
+      const c2x = (b.x + mx) / 2 - side * 18;
+      const c2y = (b.y + my) / 2;
+      return `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+    }
+
+    function flowColor(flow) {
+      if (spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight)) return "var(--arc-warm)";
+      const p = flowValue(flow);
+      if (p >= 5000) return "var(--arc)";
+      if (p >= 1800) return "var(--arc-cool)";
+      return "var(--arc-gold)";
+    }
+
+    function renderMap() {
+      const shown = activeFlows();
+      const maxPeople = Math.max(...shown.map((flow) => flowValue(flow)), 1);
+      const stats = hubStats(flows);
+      const maxHub = Math.max(...Array.from(stats.values()).map((d) => d.total), 1);
+
+      const provinceLayer = document.getElementById("provinceLayer");
+      const shadowLayer = document.getElementById("shadowLayer");
+      const arcLayer = document.getElementById("arcLayer");
+      const nodeLayer = document.getElementById("nodeLayer");
+
+      provinceLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
+        const size = nodeSize(stats.get(name).total, maxHub) + 15;
+        return `<circle class="province-ring ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${size}"></circle>`;
+      }).join("");
+
+      shadowLayer.innerHTML = shown.map((flow) => {
+        const value = flowValue(flow);
+        const width = thickness(value, maxPeople);
+        return `<path class="arc-shadow" d="${arcPath(flow.origin, flow.destination, value, maxPeople)}" stroke-width="${width}"></path>`;
+      }).join("");
+
+      arcLayer.innerHTML = shown.map((flow) => {
+        const value = flowValue(flow);
+        const width = thickness(value, maxPeople);
+        const highlight = spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight);
+        const dimmed = spotlight !== "전체" && !highlight;
+        return `<path class="arc ${highlight ? "highlight" : ""} ${dimmed ? "dimmed" : ""}" d="${arcPath(flow.origin, flow.destination, value, maxPeople)}" stroke="${flowColor(flow)}" stroke-width="${width}"></path>`;
+      }).join("");
+
+      nodeLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
+        const stat = stats.get(name);
+        const r = nodeSize(stat.total, maxHub);
+        const labelX = point.x + r + 5;
+        const labelY = point.y + 4;
+        return `
+          <circle class="node ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${r}"></circle>
+          <text class="node-label" x="${labelX}" y="${labelY}">${point.label}</text>
+        `;
+      }).join("");
+    }
+
+    function renderMetrics() {
+      const shown = activeFlows();
+      const stats = hubStats(flows);
+      const total = shown.reduce((sum, flow) => sum + flowValue(flow), 0);
+      const maxFlow = shown[0] ? flowValue(shown[0]) : 0;
+      const topHub = Array.from(stats.entries()).sort((a, b) => b[1].total - a[1].total)[0];
+      document.getElementById("panelTitle").textContent = spotlight === "전체" ? "전체 흐름" : `${regionPoints[spotlight].label} 중심`;
+      document.getElementById("rowCount").textContent = metricLabel();
+      document.getElementById("visibleCount").textContent = fmt(shown.length);
+      document.getElementById("visiblePeople").textContent = fmt(total);
+      document.getElementById("maxFlow").textContent = fmt(maxFlow);
+      document.getElementById("maxHub").textContent = topHub ? regionPoints[topHub[0]].label : "-";
+    }
+
+    function renderLists() {
+      const shown = activeFlows();
+      document.getElementById("flowList").innerHTML = shown.slice(0, 18).map((flow) => `
+        <div class="flow-row">
+          <strong title="${flow.origin}">${regionPoints[flow.origin].label}</strong>
+          <span class="mini-arrow"></span>
+          <strong title="${flow.destination}">${regionPoints[flow.destination].label}</strong>
+          <span class="value">${fmt(flowValue(flow))}</span>
+        </div>
+      `).join("");
+
+      document.getElementById("valueHeader").textContent = metricLabel();
+      document.getElementById("flowRows").innerHTML = shown.map((flow) => `
+        <tr>
+          <td>${flow.origin}</td>
+          <td>${flow.destination}</td>
+          <td>${fmt(flowValue(flow))}</td>
+          <td>${fmt(ageGroup === "all" ? flow.male : flow[`${ageGroup}_male`])}</td>
+          <td>${fmt(ageGroup === "all" ? flow.female : flow[`${ageGroup}_female`])}</td>
+          <td>${flow.period || "202605"}</td>
+        </tr>
+      `).join("");
+    }
+
+    function render() {
+      renderMap();
+      renderMetrics();
+      renderLists();
+    }
+
+    document.querySelectorAll("[data-count]").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll("[data-count]").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        displayCount = Number(button.dataset.count);
+        render();
+      });
+    });
+
+    document.getElementById("spotlightSelect").addEventListener("change", (event) => {
+      spotlight = event.target.value;
+      render();
+    });
+
+    document.getElementById("ageSelect").addEventListener("change", (event) => {
+      ageGroup = event.target.value;
+      render();
+    });
+
+    document.getElementById("genderSelect").addEventListener("change", (event) => {
+      gender = event.target.value;
+      render();
+    });
+
+    loadData();
+  </script>
+</body>
+</html>

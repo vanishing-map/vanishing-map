@@ -1,0 +1,187 @@
+{
+  "team": {
+    "name": "vanishing_map",
+    "social_innovator": "이젠",
+    "developer": "고경민"
+  },
+  "project": {
+    "name": "vanishing_map",
+    "slug": "vanishing-map",
+    "created_date": "2026-06-27",
+    "event": "Codex Impact Workshop"
+  },
+  "problem": {
+    "actual_work_problem": "한국의 귀농·귀촌 및 관계인구 정책에서 전국 단위 출발지→도착지 이동 흐름을 한눈에 볼 수 있는 통합 시각화가 부족해, 각 지자체가 자체 데이터만으로 유입·유출을 해석하고 과잉 경쟁하는 문제가 있다.",
+    "people_affected": "전국 이동 흐름을 바탕으로 지역 정책과 홍보 방향을 판단해야 하는 청도군 실무자",
+    "blocked_moment": "특정 보고 순간이 아니라, 실무자가 언제든 전국 단위 인구 이동 유량을 bird-eye view로 보고 사람들이 어디에서 어디로 흐르는지 직관적으로 파악해야 할 때"
+  },
+  "materials": {
+    "source_status": "공공데이터 예정 및 공개 통계 샘플",
+    "sample_input": "KOSIS에서 사용자가 직접 수집한 전국 출발지→도착지 이동량 CSV와 공공데이터포털 행정안전부 지역별 인구이동 현황 API 샘플. MVP에서는 기존 data/sample-2025-flows.csv 또는 같은 구조의 표준 flow CSV를 사용한다. 기본 필드는 origin, destination, people이며, 확장 필드는 year/month, characteristic, age_group, movement_reason, data_source, confidence, source_status처럼 별도 컬럼으로 둔다.",
+    "privacy_action": "공공 통계와 집계 이동량만 사용하므로 개인정보 처리 해당 없음",
+    "validity_check": "민감정보가 없는 집계 데이터이며, 3시간 MVP에서는 origin, destination, people을 필수 컬럼으로 표준화한 샘플만 사용한다. 색상으로 구분할 특성 값은 people 안에 섞지 않고 characteristic 같은 별도 컬럼으로 분리한다. 공식 통계 주장에는 KOSIS 원자료로 교체 후 검증이 필요하다."
+  },
+  "output_choice": {
+    "problem_archetype": "데이터 정리/분석/대시보드",
+    "output_type": "대시보드",
+    "selection_reason": "문제의 핵심이 개별 지역 조회가 아니라 전국 단위 이동 유량을 한눈에 해석하는 것이므로, 표나 필터 중심 도구보다 지도 기반 flow map 대시보드가 3시간 데모와 현장 문제에 맞다."
+  },
+  "current_workflow": {
+    "inputs": "KOSIS 인구이동 통계, 공공데이터포털 행정안전부 지역별 인구이동 현황 API, 지자체별 자체 귀농·귀촌 자료",
+    "steps": "각 기관 데이터 확인 -> 지역별 유입·유출 수치 비교 -> 특정 지역 중심으로 해석 -> 정책·홍보 방향 검토",
+    "judgment": "어느 출발지에서 어느 도착지로 이동량이 큰지, 특정 지역이 전국 흐름에서 어떤 위치인지, 강한 유입·유출 허브가 어디인지",
+    "outputs": "지역별 유입·유출 해석, 정책 검토용 설명, 홍보 타깃 지역 가설",
+    "tools": "KOSIS, 공공데이터포털, 스프레드시트, 수동 분석"
+  },
+  "expected_change": {
+    "summary": "전국 단위 인구 이동 흐름을 표가 아니라 대한민국 지도 베이스맵 위에, 3D 지구본 없이, 살짝 떠 있는 3D 느낌의 곡선 arc로 보여줘 정책 담당자가 큰 유량과 방향을 즉시 파악한다.",
+    "observable_improvement": "샘플 데이터를 넣었을 때 남한 베이스맵 위에 주요 출발지→도착지 흐름이 위로 솟았다 내려오는 곡선 arc로 나타나고, 유량 굵기와 강한 유입·유출 허브가 시각적으로 드러난다."
+  },
+  "mvp": {
+    "problem_slice": "공개 통계 샘플 1개를 표준 flow 데이터로 넣어 전국 단위 출발지→도착지 이동 유량을 3D 지구본 없이 대한민국 지도 베이스맵 위의 곡선 arc 대시보드로 보여준다.",
+    "single_feature": "한국(남한) 베이스맵 위에 출발지→도착지 이동을 위로 솟았다 내려오는 3D 느낌의 곡선 arc로 그리고, 선 굵기는 유량으로, 색상은 향후 특성 레이어로 분리해 표시하는 bird-eye flow map",
+    "included_workflow_steps": "표준 flow CSV 로드 -> 남한 베이스맵과 지역 좌표 매핑 -> 유량 기준 arc 굵기 계산 -> 출발지에서 도착지로 향하는 상승-하강 곡선 arc 렌더링 -> 특성 컬럼 기반 색상/범례 설정 -> 주요 허브 요약 표시",
+    "demo_input": "origin, destination, people 필드를 가진 전국 이동량 샘플 CSV. 가능하면 KOSIS 직접 수집 데이터, 없으면 data/sample-2025-flows.csv 구조의 데모 데이터. 이후 특성 구분은 characteristic, age_group, movement_reason, data_source 같은 선택 컬럼으로 확장한다.",
+    "demo_output": "한국(남한) 베이스맵 위 이동 arc, 유량 굵기, 주요 유입·유출 허브, 강한 흐름 요약, 색상 범례가 확장 가능한 대시보드 화면",
+    "ai_role": "데이터 구조 표준화, 흐름 요약 문구 생성, 시각화 구현 보조",
+    "human_review_point": "청도군 실무자 또는 정책 담당자가 지도에서 큰 흐름과 허브 해석이 실제 데이터 의미와 맞는지 최종 확인한다.",
+    "success_criterion": "전국 이동 데이터 샘플을 넣었을 때 한국(남한) 베이스맵 위에 출발지→도착지 arc가 유량에 따라 굵기로 표시되고, arc가 위로 솟았다 내려오는 3D 느낌을 주며, 색상은 향후 특성 구분을 위한 범례 슬롯으로 분리되고, 주요 이동 허브와 강한 흐름이 한눈에 보여야 성공이다.",
+    "failure_signal": "3D 지구본처럼 보이거나, 단순 표나 필터 화면만 나오거나, 전국 흐름의 방향과 규모가 직관적으로 보이지 않거나, arc가 평면 직선이라 이동 유량의 bird-eye 느낌이 약하거나, 색상이 유량과 특성을 뒤섞어 해석을 혼란스럽게 만들거나, 데모 데이터가 실제 통계처럼 오해되면 실패로 본다.",
+    "three_hour_decision": "축소 필요 - 남한 베이스맵 위 arc flow map 자체는 가능하지만 3D 지구본, 실시간 수집, KOSIS 자동화, 관계인구 추세, 정교한 행정구역 지도까지 포함하면 3시간 밖이다. 샘플 CSV 기반 정적 대시보드로 자르면 3시간 안이다."
+  },
+  "scope": {
+    "not_today": "3D 지구본, 실시간 데이터 수집, KOSIS 자동 크롤링, 공공데이터 API 운영 연동, 관계인구 분기별 추세 분석, 정책 추천 자동화, 로그인/DB/배포, 모든 시군구 좌표 정밀 보정",
+    "next_ideas": "KOSIS 원자료 업로드 변환기, 청도군 중심 drill-down, 관계인구 체류 데이터와 인구이동 흐름 비교, 공식 통계 테이블 교체"
+  },
+  "build_plan": {
+    "0_30": "데모 데이터 구조를 origin, destination, people 필수 컬럼과 characteristic 등 선택 컬럼으로 고정하고 기존 샘플 CSV와 KOSIS 수집 CSV 중 오늘 사용할 입력을 확정한다.",
+    "30_90": "한국(남한) 베이스맵 또는 남한 윤곽 좌표 캔버스에 지역 노드와 출발지→도착지 arc를 그린다. arc는 중간 제어점을 위로 올린 곡선으로 만들어 3D처럼 솟았다 내려오는 느낌을 주고, 선 굵기는 people, 색상은 characteristic 같은 특성 컬럼에만 배정한다.",
+    "90_150": "주요 유입·유출 허브, 상위 흐름 요약, 색상 범례 슬롯을 추가하고, 데모 데이터가 demo/public source인지 명확히 표시한다. 지구본이 아니라 남한 지도 위 arc flow로 보이는지 조정한다.",
+    "150_180": "대시보드 화면을 검수한다. 한국(남한)만 보이는지, arc가 위로 솟았다 내려오는 3D 느낌을 주는지, 선 굵기와 색상 의미가 분리되어 보이는지, 단순 필터 화면처럼 보이지 않는지 확인하고 발표용 설명을 정리한다."
+  },
+  "follow_up_candidates": {
+    "candidate_1": {
+      "task": "KOSIS 원자료 변환기 추가",
+      "start_condition": "flow map이 샘플 CSV로 정상 표시되고 40분 이상 남았을 때",
+      "implementation": "KOSIS에서 내려받은 CSV 컬럼을 origin, destination, people 필수 구조와 characteristic 등 선택 특성 컬럼으로 변환하는 업로드/파싱 기능을 만든다.",
+      "demo_output": "사용자가 수집한 KOSIS CSV를 넣으면 대시보드용 flow CSV로 변환되는 화면 또는 결과 파일",
+      "timebox": "40분",
+      "success_check": "최소 1개 KOSIS 샘플 파일이 표준 flow 구조로 변환되고, 유량과 특성 컬럼이 분리된 상태로 지도에 반영된다."
+    },
+    "candidate_2": {
+      "task": "청도군 중심 강조 모드 추가",
+      "start_condition": "대한민국 지도 베이스맵 위 arc flow map이 안정적으로 보이고 30분 이상 남았을 때",
+      "implementation": "청도군과 연결된 유입·유출 흐름만 강조하고 나머지는 흐리게 보여주는 보기 모드를 추가한다.",
+      "demo_output": "전국 흐름 속에서 청도군과 연결된 주요 출발지/도착지가 강조된 지도",
+      "timebox": "30분",
+      "success_check": "청도군의 주요 유입·유출 arc가 남한 베이스맵 위에서 즉시 구분된다."
+    }
+  },
+  "visual_design": {
+    "encoding_rule": "지도는 한국(남한)만 보여준다. 베이스맵 위 이동선은 직선이 아니라 출발지에서 위로 솟았다 도착지로 내려오는 3D 느낌의 곡선 arc로 표시한다. 선 굵기는 people 같은 유량 크기만 표현한다. 색상은 이동 사유, 연령대, 관계인구 유형, 데이터 출처, 신뢰도 같은 특성 구분에만 사용한다. 방향은 색상에 의존하지 않고 화살표 또는 테이퍼 라인으로 표시한다.",
+    "required_fields": "origin, destination, people",
+    "optional_fields": "year, month, characteristic, age_group, movement_reason, relation_population_type, data_source, confidence, source_status",
+    "legend_rule": "색상을 쓰는 순간 지도에는 항상 범례를 붙이고, 선택한 색상 축이 무엇인지 명시한다.",
+    "future_layers": "귀농·귀촌 이동, 관계인구 체류, 연령대, 이동 사유, 데이터 출처, 공식/데모 여부를 레이어로 확장할 수 있게 설계한다.",
+    "basemap_rule": "3D 지구본은 쓰지 않고 한국(남한) 베이스맵 또는 남한 윤곽 지도만 사용한다.",
+    "arc_style_rule": "arc는 평면 직선이 아니라 quadratic/cubic curve, SVG path, Canvas bezier, Deck.gl ArcLayer 같은 방식으로 중간 높이를 올려 공중 항로처럼 보이게 한다."
+  },
+  "visual_encoding": {
+    "line_thickness": "people_volume_log_or_quantile_scale",
+    "line_color": "reserved_for_future_attribute_encoding",
+    "line_opacity": "focus_or_background_emphasis_only",
+    "line_direction": "origin_to_destination_arrow_or_taper",
+    "line_geometry": "elevated_curved_arc_over_south_korea_basemap",
+    "node_size": "total_inflow_outflow_volume",
+    "default_color_label": "전체 이동량",
+    "future_color_fields": [
+      "flow_type",
+      "age_group",
+      "year",
+      "source_type",
+      "movement_reason",
+      "relation_population_type"
+    ],
+    "legend_labels": [
+      "이동량",
+      "방향",
+      "선택 지역",
+      "속성 색상"
+    ]
+  },
+  "submission": {
+    "problem_definition_outputs": "PLAN.md, workshop.json 초안",
+    "implementation_handoff": "PLAN.md 작성 후 스킬은 직접 구현하지 않고 사용자가 3시간 구현 계획을 기준으로 구현",
+    "build_records": "새 세션 구현 중에도 MEMORY.md append-only 갱신",
+    "final_outputs": "WORKFLOW_ANALYSIS.md, CASE_STUDY.md, 최종 workshop.json, 5장 Google Slides 발표자료",
+    "archive_criteria": "데모 데이터와 공식 데이터 구분이 명확하고, 핵심 MVP, 자료 상태, 사람 검토, 공개 가능 범위가 모든 산출물에서 일치해야 한다."
+  },
+  "library_metadata": {
+    "sector": "지역정책",
+    "workflow_type": "데이터시각화",
+    "agent_role": "데이터정규화·시각화보조",
+    "data_characteristics": "전국 출발지→도착지 이동량 집계 데이터",
+    "data_type": "정형",
+    "privacy_included": "개인정보 없음. 집계 공공통계 사용",
+    "privacy_level": "해당 없음",
+    "integration_level": "수동 CSV 업로드 또는 정적 샘플",
+    "mcp_cli_connection": "MCP/CLI 연결 없음. 정적 파일과 브라우저 대시보드로 시연",
+    "human_review": "정책 담당자 해석 검토",
+    "reuse_level": "다른 지역 정책 데이터에도 재사용 가능",
+    "output_format": "html-dashboard"
+  },
+  "existing_workflow": {
+    "workflow_trigger": "지역 인구 이동과 귀농·귀촌 유입 흐름을 파악해야 할 때",
+    "baseline_volume": "전국 시군구 단위 이동 통계",
+    "data_count": "데모는 샘플 CSV 1개, 실제는 KOSIS/공공데이터 원자료",
+    "repeat_frequency": "정책 검토와 통계 갱신 시 반복",
+    "baseline_time": "자료 수집·정리·해석에 수동 작업 필요",
+    "input_sources": "KOSIS, 공공데이터포털, 지자체 보유 자료",
+    "current_steps": "데이터를 따로 확인하고 표 중심으로 유입·유출을 해석한다.",
+    "current_outputs": "지역별 수치와 설명",
+    "current_pain_points": "전국 흐름의 방향과 유량이 한눈에 보이지 않고, 지역 간 비교가 어렵다."
+  },
+  "automation_target": {
+    "selected_task": "전국 출발지→도착지 이동량을 지도 기반 유량 흐름으로 시각화",
+    "reason_for_selection": "사용자가 원하는 핵심은 검색 필터가 아니라 전국 단위 흐름을 한눈에 보는 것이며, 샘플 CSV 기반 시각화는 3시간 안에 데모 가능하다.",
+    "excluded_tasks": "실시간 수집, 자동 정책 추천, 운영 데이터베이스 연동"
+  },
+  "ai_agent_design": {
+    "agent_input_contract": "origin, destination, people 필드를 가진 표준 flow 데이터 또는 이 구조로 변환 가능한 공공 통계 CSV",
+    "agent_output_contract": "지도 기반 이동 흐름선, 유량 굵기, 주요 허브 요약, 데이터 출처 상태 표시",
+    "decision_boundary": "AI와 대시보드는 흐름을 시각화하고 요약하지만 정책 판단과 공식 해석은 사람이 한다.",
+    "tools_used": "Codex, 정적 HTML/CSS/JavaScript, 공공데이터/KOSIS 샘플 CSV",
+    "changed_workflow": "공공 통계 샘플 입력 -> flow 데이터 표준화 -> 전국 flow map 표시 -> 실무자 해석 검토"
+  },
+  "human_in_the_loop": {
+    "review_points": "전국 흐름의 방향과 유량 해석, 데모 데이터와 공식 데이터 구분, 특정 지역 강조가 과도하지 않은지 확인",
+    "key_review_points": "주요 허브와 강한 흐름이 실제 데이터 의미와 맞는지, 데모 데이터가 공식 수치로 오해되지 않는지 확인",
+    "handoff_protocol": "지도 표시가 불완전하면 상위 흐름 표와 데이터 출처 표시를 기준으로 수동 해석한다.",
+    "error_types": "지역명 매핑 오류, 좌표 누락, 유량 굵기 왜곡, 데모 데이터 오해",
+    "evaluation_samples": "KOSIS 직접 수집 CSV 또는 data/sample-2025-flows.csv 구조의 샘플 1개"
+  },
+  "data_and_access": {
+    "privacy_action": "공공 집계 데이터만 사용하므로 개인정보 처리 해당 없음",
+    "permission_issues": "공공데이터 API는 활용 시 서비스키와 이용 조건 확인 필요. KOSIS 데이터는 사용자가 직접 수집 가능",
+    "shareability": "데모 데이터는 데모로 표시하면 공개 가능. 공식 수치 주장은 원자료 검증 후 공개"
+  },
+  "impact_and_reuse": {
+    "expected_time_change": "표 중심 확인에서 전국 흐름을 한 화면에서 먼저 파악하는 방식으로 초기 해석 시간을 줄인다.",
+    "quality_change": "지역 단위 주장보다 전국 이동 흐름과 상대적 위치를 근거로 해석할 수 있다.",
+    "case_reuse_recipe": "origin, destination, people 구조의 다른 이동·이용·방문 데이터로 교체하면 다른 지역/분야 flow map으로 재사용 가능하다.",
+    "maintenance_owner": "지역 정책 담당자 또는 데이터 담당자",
+    "next_iteration": "KOSIS 원자료 변환기, 청도군 중심 강조 모드, 관계인구 체류 데이터 비교"
+  },
+  "case_study": {
+    "title": "전국 인구 이동 유량을 한눈에 보는 vanishing_map",
+    "lessons": "3시간 MVP에서는 실시간 수집보다 표준 flow CSV를 지도 위 유량으로 보이게 하는 것이 핵심 가치에 가장 가깝다."
+  },
+  "generated_metadata": {
+    "team_name": "vanishing_map",
+    "project_name": "vanishing_map",
+    "created_date": "2026-06-27",
+    "event": "Codex Impact Workshop",
+    "version": "1",
+    "case_id": "impact-agent-20260627-vanishing-map"
+  }
+}
