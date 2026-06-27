@@ -55,9 +55,6 @@
       padding: 28px 34px 20px;
       border-bottom: 1px solid rgba(35,40,32,.28);
       background: rgba(243,239,230,.88);
-      backdrop-filter: blur(18px);
-      position: sticky;
-      top: 0;
       z-index: 20;
     }
 
@@ -103,6 +100,7 @@
       display: grid;
       grid-template-columns: minmax(320px, 1fr) minmax(330px, 420px);
       gap: 18px;
+      align-items: start;
       padding: 18px 34px 34px;
     }
 
@@ -117,9 +115,8 @@
     }
 
     .map-stage {
-      min-height: calc(100vh - 184px);
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto auto auto;
     }
 
     .stage-bar,
@@ -200,7 +197,6 @@
 
     .map-wrap {
       position: relative;
-      min-height: 560px;
       background:
         linear-gradient(135deg, rgba(255,255,255,.35), transparent 40%),
         var(--water);
@@ -210,8 +206,8 @@
     svg {
       display: block;
       width: 100%;
-      height: 100%;
-      min-height: 560px;
+      height: auto;
+      aspect-ratio: 900 / 760;
     }
 
     .sea-label {
@@ -327,7 +323,8 @@
     .side-panel {
       display: grid;
       grid-template-rows: auto auto 1fr;
-      min-height: calc(100vh - 184px);
+      height: calc(100vh - 36px);
+      min-height: 560px;
     }
 
     .metric-grid {
@@ -359,6 +356,7 @@
 
     .flow-list {
       overflow: auto;
+      min-height: 0;
       padding: 0;
     }
 
@@ -489,7 +487,6 @@
       }
 
       header {
-        position: static;
         padding: 24px 18px 18px;
       }
 
@@ -499,12 +496,8 @@
 
       .map-stage,
       .side-panel {
+        height: auto;
         min-height: auto;
-      }
-
-      .map-wrap,
-      svg {
-        min-height: 520px;
       }
 
       .stage-bar {
