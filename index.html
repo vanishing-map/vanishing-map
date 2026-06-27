@@ -336,35 +336,58 @@
 
     .arc-shadow {
       fill: none;
-      stroke: rgba(21,25,21,.14);
+      stroke: rgba(21,25,21,.13);
       stroke-linecap: round;
-      transform: translate(0, 5px);
+      transform: translate(0, 6px);
       filter: url(#shadowBlur);
     }
+
+    /* node-connecting flow line: directional source->target gradient core */
+    .arc-group { cursor: pointer; }
 
     .arc {
       fill: none;
       stroke-linecap: round;
       filter: url(#arcGlow);
-      opacity: .9;
-      marker-end: url(#arrow);
+      transition: opacity .2s ease;
     }
 
-    .arc.dimmed {
-      opacity: .15;
-      stroke: #7d8777 !important;
-    }
+    .arc-group.dimmed { opacity: .16; }
+    .arc-group.dimmed .arc { stroke: #8b9484 !important; filter: none; }
 
-    .arc.highlight {
-      opacity: .98;
-      filter: url(#arcGlowStrong);
-    }
+    .arc-group.highlight .arc { filter: url(#arcGlowStrong); }
 
+    /* hovering a specific line lifts it and quiets the rest */
+    .arc-group { transition: opacity .2s ease; }
+    #arcLayer:has(.arc-group:hover) .arc-group:not(:hover) { opacity: .28; }
+    .arc-group:hover .arc { filter: url(#arcGlowStrong); }
+
+    /* soft top highlight that sells the lifted 3D curve */
     .arc-sheen {
       fill: none;
       stroke: url(#arcSheen);
       stroke-linecap: round;
       pointer-events: none;
+    }
+
+    /* light pulse travelling source->target to imply movement/direction */
+    .arc-flow {
+      fill: none;
+      stroke: #fcf8ee;
+      stroke-opacity: .62;
+      stroke-linecap: round;
+      stroke-dasharray: 2.5 17;
+      pointer-events: none;
+      animation: arcFlow 1.7s linear infinite;
+    }
+
+    @keyframes arcFlow {
+      to { stroke-dashoffset: -19.5; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .arc-flow { animation: none; opacity: 0; }
+      .arc { transition: none; }
     }
 
     .legend {
@@ -673,24 +696,22 @@
               <filter id="nodeShadow" x="-60%" y="-60%" width="220%" height="220%">
                 <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#172018" flood-opacity=".28" />
               </filter>
-              <filter id="arcGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="4" stdDeviation="2.3" flood-color="#073b36" flood-opacity=".28" />
+              <filter id="arcGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#1c211b" flood-opacity=".22" />
               </filter>
-              <filter id="arcGlowStrong" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="6" stdDeviation="3.2" flood-color="#073b36" flood-opacity=".4" />
+              <filter id="arcGlowStrong" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="4" stdDeviation="3.4" flood-color="#1c211b" flood-opacity=".34" />
               </filter>
               <filter id="shadowBlur" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="2.4" />
               </filter>
               <linearGradient id="arcSheen" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ffffff" stop-opacity=".55" />
+                <stop offset="0" stop-color="#ffffff" stop-opacity=".62" />
                 <stop offset="0.5" stop-color="#ffffff" stop-opacity=".12" />
                 <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
               </linearGradient>
-              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                <path d="M0,1 L9,5 L0,9 z" fill="#2b3128" opacity="0.85"></path>
-              </marker>
             </defs>
+            <defs id="arcDefs"></defs>
 
             <rect x="0" y="0" width="900" height="760" fill="transparent"></rect>
             <g id="seaLayer"></g>
@@ -1142,6 +1163,51 @@
       return `M ${ax} ${ay} L ${bx} ${by}`;
     }
 
+    // Gradient stop-color needs a real color; var() does not resolve as an SVG
+    // attribute. Resolve CSS custom properties to their computed value, cached.
+    const cssVarCache = {};
+    function resolveColor(c) {
+      const m = /^var\((--[\w-]+)\)$/.exec(c);
+      if (!m) return c;
+      if (!cssVarCache[m[1]]) {
+        cssVarCache[m[1]] = getComputedStyle(document.documentElement)
+          .getPropertyValue(m[1]).trim() || c;
+      }
+      return cssVarCache[m[1]];
+    }
+
+    // Paint all connecting lines: a directional source->target gradient core,
+    // a top sheen, a ground shadow, and (when not too dense) a travelling pulse.
+    // descs: [{x1,y1,x2,y2,d,width,color,highlight,dimmed,title}]
+    function paintArcs(descs) {
+      const animate = descs.length <= 90;
+      const arcDefs = document.getElementById("arcDefs");
+      const shadowLayer = document.getElementById("shadowLayer");
+      const arcLayer = document.getElementById("arcLayer");
+
+      arcDefs.innerHTML = descs.map((a, i) => {
+        const col = resolveColor(a.color);
+        return `<linearGradient id="arcg${i}" gradientUnits="userSpaceOnUse" x1="${a.x1.toFixed(1)}" y1="${a.y1.toFixed(1)}" x2="${a.x2.toFixed(1)}" y2="${a.y2.toFixed(1)}">` +
+          `<stop offset="0" stop-color="${col}" stop-opacity="0.1"></stop>` +
+          `<stop offset="0.55" stop-color="${col}" stop-opacity="0.66"></stop>` +
+          `<stop offset="1" stop-color="${col}" stop-opacity="0.97"></stop>` +
+          `</linearGradient>`;
+      }).join("");
+
+      shadowLayer.innerHTML = descs.map((a) =>
+        `<path class="arc-shadow" d="${groundPath(a.x1, a.y1, a.x2, a.y2)}" stroke-width="${a.width}"></path>`
+      ).join("");
+
+      arcLayer.innerHTML = descs.map((a, i) => {
+        const groupCls = `arc-group${a.highlight ? " highlight" : ""}${a.dimmed ? " dimmed" : ""}`;
+        const sheen = a.dimmed ? "" : `<path class="arc-sheen" d="${a.d}" stroke-width="${Math.max(1, a.width * 0.5)}"></path>`;
+        const flow = (animate && !a.dimmed) ? `<path class="arc-flow" d="${a.d}" stroke-width="${Math.max(1.1, a.width * 0.4)}"></path>` : "";
+        return `<g class="${groupCls}"><title>${a.title}</title>` +
+               `<path class="arc" d="${a.d}" stroke="url(#arcg${i})" stroke-width="${a.width}"></path>` +
+               `${sheen}${flow}</g>`;
+      }).join("");
+    }
+
     function flowColor(flow) {
       if (spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight)) return "var(--arc-warm)";
       const p = flowValue(flow);
@@ -1167,8 +1233,6 @@
       const seaLayer = document.getElementById("seaLayer");
       const baseLayer = document.getElementById("baseLayer");
       const provinceLayer = document.getElementById("provinceLayer");
-      const shadowLayer = document.getElementById("shadowLayer");
-      const arcLayer = document.getElementById("arcLayer");
       const nodeLayer = document.getElementById("nodeLayer");
 
       // Fit the projection to all of South Korea and place each node at its
@@ -1202,22 +1266,21 @@
         return `<circle class="province-ring ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${size}" data-region="${name}"></circle>`;
       }).join("");
 
-      shadowLayer.innerHTML = shown.map((flow) => {
+      paintArcs(shown.map((flow) => {
         const a = regionPoints[flow.origin];
         const b = regionPoints[flow.destination];
-        const width = thickness(flowValue(flow), maxPeople);
-        return `<path class="arc-shadow" d="${groundPath(a.x, a.y, b.x, b.y)}" stroke-width="${width}"></path>`;
-      }).join("");
-
-      arcLayer.innerHTML = shown.map((flow) => {
         const value = flowValue(flow);
-        const width = thickness(value, maxPeople);
         const highlight = spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight);
-        const dimmed = spotlight !== "전체" && !highlight;
-        const d = arcPath(flow.origin, flow.destination, value, maxPeople);
-        const sheen = dimmed ? "" : `<path class="arc-sheen" d="${d}" stroke-width="${Math.max(1, width * 0.5)}"></path>`;
-        return `<path class="arc ${highlight ? "highlight" : ""} ${dimmed ? "dimmed" : ""}" d="${d}" stroke="${flowColor(flow)}" stroke-width="${width}"></path>${sheen}`;
-      }).join("");
+        return {
+          x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+          d: arcPath(flow.origin, flow.destination, value, maxPeople),
+          width: thickness(value, maxPeople),
+          color: flowColor(flow),
+          highlight,
+          dimmed: spotlight !== "전체" && !highlight,
+          title: `${regionPoints[flow.origin].label} → ${regionPoints[flow.destination].label} · ${fmt(value)}`
+        };
+      }));
 
       nodeLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
         const stat = stats.get(name);
@@ -1300,20 +1363,21 @@
         `<path class="sigungu-land" d="${geoPath(f, proj)}"></path>`).join("");
       provinceLayer.innerHTML = title;
 
-      shadowLayer.innerHTML = shown.map((flow) => {
+      paintArcs(shown.map((flow) => {
         const a = points.get(flow.origin);
         const b = points.get(flow.destination);
-        if (!a || !b) return "";
-        return `<path class="arc-shadow" d="${groundPath(a.x, a.y, b.x, b.y)}" stroke-width="${thickness(flowValue(flow), maxPeople)}"></path>`;
-      }).join("");
-
-      arcLayer.innerHTML = shown.map((flow) => {
         const value = flowValue(flow);
-        const d = sigunguArcPath(flow, points, value, maxPeople);
-        if (!d) return "";
-        const width = thickness(value, maxPeople);
-        return `<path class="arc highlight" d="${d}" stroke="var(--arc-warm)" stroke-width="${width}"></path><path class="arc-sheen" d="${d}" stroke-width="${Math.max(1, width * 0.5)}"></path>`;
-      }).join("");
+        if (!a || !b) return null;
+        return {
+          x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+          d: sigunguArcPath(flow, points, value, maxPeople),
+          width: thickness(value, maxPeople),
+          color: "var(--arc-warm)",
+          highlight: false,
+          dimmed: false,
+          title: `${flow.origin} → ${flow.destination} · ${fmt(value)}`
+        };
+      }).filter(Boolean));
 
       nodeLayer.innerHTML = rows.map(([name, stat]) => {
         const point = points.get(name);
