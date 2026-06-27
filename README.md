@@ -1,6 +1,8 @@
-# vanishing_map
+# vanishing-map
 
 Static web app for visualizing South Korea population movement as elevated origin-to-destination arcs.
+
+Repository: `vanishing-map/vanishing-map`
 
 ## Run
 
