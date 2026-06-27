@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>vanishing_map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
       --bg: #f3efe6;
@@ -35,6 +36,7 @@
         var(--bg);
       font-family: Georgia, "Apple SD Gothic Neo", "Noto Serif KR", serif;
       letter-spacing: 0;
+      overflow-x: hidden;
     }
 
     button, select, input {
@@ -61,9 +63,14 @@
       z-index: 20;
     }
 
+    header > * {
+      min-width: 0;
+    }
+
     .brand {
       display: grid;
       gap: 12px;
+      min-width: 0;
     }
 
     .tagline {
@@ -90,13 +97,21 @@
     .source-note {
       display: grid;
       gap: 10px;
+      min-width: 0;
       color: var(--soft-ink);
       font-size: 14px;
       line-height: 1.55;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .source-note strong {
       color: var(--ink);
+    }
+
+    .source-note > * {
+      min-width: 0;
+      max-width: 100%;
     }
 
     main {
@@ -120,6 +135,7 @@
       min-height: calc(100vh - 184px);
       display: grid;
       grid-template-rows: auto 1fr auto;
+      min-width: 0;
     }
 
     .stage-bar,
@@ -189,6 +205,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-width: 0;
     }
 
     .control-label {
@@ -196,6 +213,7 @@
       font-size: 11px;
       font-weight: 900;
       color: var(--soft-ink);
+      white-space: nowrap;
     }
 
     .map-wrap {
@@ -207,11 +225,58 @@
       overflow: hidden;
     }
 
-    svg {
+    .map-wrap > svg {
       display: block;
       width: 100%;
       height: 100%;
       min-height: 560px;
+    }
+
+    #flowMap {
+      width: 100%;
+      min-height: 560px;
+      height: 100%;
+      background: var(--water);
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+
+    .leaflet-container {
+      background: var(--water);
+    }
+
+    .leaflet-control-attribution {
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 10px;
+    }
+
+    .node-label-tooltip {
+      border: 0;
+      box-shadow: none;
+      background: rgba(255,253,245,.86);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 5px;
+    }
+
+    .node-label-tooltip::before {
+      display: none;
+    }
+
+    .flow-arrow-icon {
+      background: transparent;
+      border: 0;
+    }
+
+    .flow-arrow-head {
+      display: block;
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 10px solid currentColor;
+      filter: drop-shadow(0 2px 2px rgba(21,25,21,.24));
+      transform-origin: 4px 5px;
     }
 
     .sea-label {
@@ -503,7 +568,7 @@
       }
 
       .map-wrap,
-      svg {
+      #flowMap {
         min-height: 520px;
       }
 
@@ -513,7 +578,24 @@
       }
 
       .controls {
-        justify-content: flex-start;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+        width: 100%;
+      }
+
+      .segmented {
+        grid-column: 1 / -1;
+        width: fit-content;
+      }
+
+      .control-group {
+        width: 100%;
+      }
+
+      select {
+        width: 100%;
+        min-width: 0;
       }
 
       .legend {
@@ -535,16 +617,16 @@
         <h1>전국 이동 유량을 남한 지도 위 arc로 본다.</h1>
       </div>
       <div class="source-note">
-        <div><strong>2026년 5월</strong> 행정안전부 지역별 인구이동 현황, 시도 단위 17x17 OD 행렬.</div>
-        <div>3D 지구본 없이 남한 베이스맵 위에 솟는 곡선 arc만 표시한다.</div>
-        <span class="badge data-warning">공식 집계 데이터 · API 키 미저장</span>
+        <div><strong>2026년 5월</strong> 행안부 시도 단위 17x17 OD.</div>
+        <div>CARTO 지도 타일 기반 실제 지도 위에 이동 arc를 표시한다.</div>
+        <span class="badge data-warning">공식 집계 데이터 · Leaflet/CARTO 지도</span>
       </div>
     </header>
 
     <main>
       <section class="map-stage">
         <div class="stage-bar">
-          <h2>South Korea flow arc map</h2>
+          <h2>South Korea flow arc map · CARTO basemap</h2>
           <div class="controls">
             <div class="segmented" aria-label="flow count">
               <button type="button" data-count="30" class="active">TOP 30</button>
@@ -579,37 +661,7 @@
         </div>
 
         <div class="map-wrap">
-          <svg id="flowMap" viewBox="0 0 900 760" role="img" aria-label="대한민국 시도 간 인구이동 arc 지도">
-            <defs>
-              <filter id="landShadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#172018" flood-opacity=".16" />
-              </filter>
-              <filter id="nodeShadow" x="-60%" y="-60%" width="220%" height="220%">
-                <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#172018" flood-opacity=".28" />
-              </filter>
-              <filter id="arcGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="4" stdDeviation="2.3" flood-color="#073b36" flood-opacity=".28" />
-              </filter>
-              <filter id="arcGlowStrong" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="6" stdDeviation="3.2" flood-color="#073b36" flood-opacity=".4" />
-              </filter>
-              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L0,6 L7,3 z" fill="#077b72"></path>
-              </marker>
-            </defs>
-
-            <rect x="0" y="0" width="900" height="760" fill="transparent"></rect>
-            <text x="92" y="150" class="sea-label">YELLOW SEA</text>
-            <text x="698" y="206" class="sea-label">EAST SEA</text>
-            <text x="650" y="690" class="sea-label">KOREA STRAIT</text>
-            <path class="land" d="M442 44 C493 72 528 112 542 161 C554 205 596 220 613 266 C632 319 603 348 626 398 C651 452 622 499 584 527 C548 552 543 584 512 621 C477 662 423 667 386 635 C349 604 356 564 320 535 C276 499 280 450 308 410 C335 372 315 336 337 293 C359 250 331 207 352 169 C373 130 388 82 442 44 Z"></path>
-            <path class="land" d="M374 687 C409 667 456 668 492 692 C470 725 416 732 374 711 Z"></path>
-
-            <g id="provinceLayer"></g>
-            <g id="shadowLayer"></g>
-            <g id="arcLayer"></g>
-            <g id="nodeLayer"></g>
-          </svg>
+          <div id="flowMap" role="img" aria-label="대한민국 시도 간 인구이동 arc 지도"></div>
         </div>
 
         <div class="legend">
@@ -637,10 +689,10 @@
       <section class="bottom-panel">
         <div class="readout">
           <span class="badge">visual contract</span>
-          <strong>굵기는 선택한 필터의 유량, 색상은 특성 레이어 예약.</strong>
+          <strong>굵기는 선택한 필터의 유량, 지도는 CARTO 타일.</strong>
           <div>기본 화면은 interregional OD만 사용한다. 같은 시도 내부 이동은 수치가 커서 전국 arc 해석을 압도하므로 제외했다.</div>
           <div>연령과 성별 필터는 행정안전부 나이별 남녀 이동 집계에서 다시 만든 wide CSV를 기준으로 계산한다.</div>
-          <div>방향은 origin에서 destination으로 향하는 arc와 화살표로 표현한다. 색상은 방향 의미에 쓰지 않는다.</div>
+          <div>방향은 origin에서 destination으로 향하는 arc와 화살표로 표현한다. 배경 지도는 직접 그린 SVG가 아니다.</div>
         </div>
         <div class="table-wrap">
           <table>
@@ -661,25 +713,26 @@
     </main>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const regionPoints = {
-      "서울특별시": { x: 418, y: 190, label: "서울" },
-      "인천광역시": { x: 350, y: 211, label: "인천" },
-      "경기도": { x: 430, y: 240, label: "경기" },
-      "강원특별자치도": { x: 533, y: 210, label: "강원" },
-      "충청북도": { x: 477, y: 330, label: "충북" },
-      "충청남도": { x: 382, y: 360, label: "충남" },
-      "세종특별자치시": { x: 433, y: 374, label: "세종" },
-      "대전광역시": { x: 438, y: 408, label: "대전" },
-      "경상북도": { x: 553, y: 405, label: "경북" },
-      "대구광역시": { x: 553, y: 478, label: "대구" },
-      "울산광역시": { x: 636, y: 528, label: "울산" },
-      "부산광역시": { x: 598, y: 574, label: "부산" },
-      "경상남도": { x: 505, y: 548, label: "경남" },
-      "전북특별자치도": { x: 392, y: 478, label: "전북" },
-      "광주광역시": { x: 353, y: 568, label: "광주" },
-      "전라남도": { x: 352, y: 616, label: "전남" },
-      "제주특별자치도": { x: 432, y: 704, label: "제주" }
+      "서울특별시": { lat: 37.5665, lng: 126.9780, label: "서울" },
+      "인천광역시": { lat: 37.4563, lng: 126.7052, label: "인천" },
+      "경기도": { lat: 37.2751, lng: 127.0095, label: "경기" },
+      "강원특별자치도": { lat: 37.8854, lng: 127.7298, label: "강원" },
+      "충청북도": { lat: 36.6357, lng: 127.4914, label: "충북" },
+      "충청남도": { lat: 36.6588, lng: 126.6728, label: "충남" },
+      "세종특별자치시": { lat: 36.4800, lng: 127.2890, label: "세종" },
+      "대전광역시": { lat: 36.3504, lng: 127.3845, label: "대전" },
+      "경상북도": { lat: 36.5760, lng: 128.5056, label: "경북" },
+      "대구광역시": { lat: 35.8714, lng: 128.6014, label: "대구" },
+      "울산광역시": { lat: 35.5384, lng: 129.3114, label: "울산" },
+      "부산광역시": { lat: 35.1796, lng: 129.0756, label: "부산" },
+      "경상남도": { lat: 35.2383, lng: 128.6924, label: "경남" },
+      "전북특별자치도": { lat: 35.8203, lng: 127.1088, label: "전북" },
+      "광주광역시": { lat: 35.1595, lng: 126.8526, label: "광주" },
+      "전라남도": { lat: 34.8161, lng: 126.4629, label: "전남" },
+      "제주특별자치도": { lat: 33.4996, lng: 126.5312, label: "제주" }
     };
 
     const fallbackCsv = `origin,destination,people,reason_group,source_status,period,origin_code,destination_code
@@ -699,6 +752,10 @@
     let spotlight = "전체";
     let ageGroup = "all";
     let gender = "all";
+    let map;
+    let flowLayer;
+    let arrowLayer;
+    let markerLayer;
 
     const ageLabels = {
       all: "전체",
@@ -747,7 +804,30 @@
         .filter((flow) => regionPoints[flow.origin] && regionPoints[flow.destination] && flow.origin !== flow.destination)
         .sort((a, b) => b.people - a.people);
       populateSpotlight();
+      initMap();
       render();
+    }
+
+    function initMap() {
+      if (map) return;
+      map = L.map("flowMap", {
+        zoomControl: true,
+        attributionControl: true,
+        preferCanvas: false
+      }).setView([36.35, 127.85], 7);
+
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19,
+        minZoom: 6,
+        subdomains: "abcd",
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+      }).addTo(map);
+
+      flowLayer = L.layerGroup().addTo(map);
+      arrowLayer = L.layerGroup().addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+      map.on("zoomend moveend resize", renderMap);
+      setTimeout(() => map.invalidateSize(), 0);
     }
 
     function populateSpotlight() {
@@ -809,71 +889,117 @@
       return 5 + (Math.sqrt(value) / Math.sqrt(safeMax)) * 18;
     }
 
-    function arcPath(origin, destination, people, maxPeople) {
+    function arcLatLngs(origin, destination, people, maxPeople) {
       const a = regionPoints[origin];
       const b = regionPoints[destination];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
+      const start = map.latLngToLayerPoint([a.lat, a.lng]);
+      const end = map.latLngToLayerPoint([b.lat, b.lng]);
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
       const dist = Math.hypot(dx, dy);
-      const lift = Math.min(190, Math.max(42, dist * .34 + thickness(people, maxPeople) * 4));
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2 - lift;
+      const lift = Math.min(220, Math.max(52, dist * .32 + thickness(people, maxPeople) * 5));
+      const mx = (start.x + end.x) / 2;
+      const my = (start.y + end.y) / 2 - lift;
       const side = dx >= 0 ? 1 : -1;
-      const c1x = (a.x + mx) / 2 + side * 18;
-      const c1y = (a.y + my) / 2;
-      const c2x = (b.x + mx) / 2 - side * 18;
-      const c2y = (b.y + my) / 2;
-      return `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+      const c1 = L.point((start.x + mx) / 2 + side * 18, (start.y + my) / 2);
+      const c2 = L.point((end.x + mx) / 2 - side * 18, (end.y + my) / 2);
+      const points = [];
+      for (let i = 0; i <= 28; i += 1) {
+        const t = i / 28;
+        const mt = 1 - t;
+        const x = mt ** 3 * start.x + 3 * mt ** 2 * t * c1.x + 3 * mt * t ** 2 * c2.x + t ** 3 * end.x;
+        const y = mt ** 3 * start.y + 3 * mt ** 2 * t * c1.y + 3 * mt * t ** 2 * c2.y + t ** 3 * end.y;
+        points.push(map.layerPointToLatLng([x, y]));
+      }
+      return points;
     }
 
     function flowColor(flow) {
-      if (spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight)) return "var(--arc-warm)";
+      if (spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight)) return "#c15b2a";
       const p = flowValue(flow);
-      if (p >= 5000) return "var(--arc)";
-      if (p >= 1800) return "var(--arc-cool)";
-      return "var(--arc-gold)";
+      if (p >= 5000) return "#077b72";
+      if (p >= 1800) return "#285a9b";
+      return "#b1811f";
+    }
+
+    function arrowMarker(latLngs, color) {
+      const end = latLngs[latLngs.length - 1];
+      const before = latLngs[latLngs.length - 3] || latLngs[latLngs.length - 2];
+      const a = map.latLngToLayerPoint(before);
+      const b = map.latLngToLayerPoint(end);
+      const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+      return L.marker(end, {
+        interactive: false,
+        icon: L.divIcon({
+          className: "flow-arrow-icon",
+          iconSize: [14, 14],
+          iconAnchor: [8, 7],
+          html: `<span class="flow-arrow-head" style="color:${color}; transform: rotate(${angle}deg);"></span>`
+        })
+      });
     }
 
     function renderMap() {
+      if (!map) return;
       const shown = activeFlows();
       const maxPeople = Math.max(...shown.map((flow) => flowValue(flow)), 1);
       const stats = hubStats(flows);
       const maxHub = Math.max(...Array.from(stats.values()).map((d) => d.total), 1);
 
-      const provinceLayer = document.getElementById("provinceLayer");
-      const shadowLayer = document.getElementById("shadowLayer");
-      const arcLayer = document.getElementById("arcLayer");
-      const nodeLayer = document.getElementById("nodeLayer");
+      flowLayer.clearLayers();
+      arrowLayer.clearLayers();
+      markerLayer.clearLayers();
 
-      provinceLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
-        const size = nodeSize(stats.get(name).total, maxHub) + 15;
-        return `<circle class="province-ring ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${size}"></circle>`;
-      }).join("");
-
-      shadowLayer.innerHTML = shown.map((flow) => {
-        const value = flowValue(flow);
-        const width = thickness(value, maxPeople);
-        return `<path class="arc-shadow" d="${arcPath(flow.origin, flow.destination, value, maxPeople)}" stroke-width="${width}"></path>`;
-      }).join("");
-
-      arcLayer.innerHTML = shown.map((flow) => {
+      shown.forEach((flow) => {
         const value = flowValue(flow);
         const width = thickness(value, maxPeople);
         const highlight = spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight);
         const dimmed = spotlight !== "전체" && !highlight;
-        return `<path class="arc ${highlight ? "highlight" : ""} ${dimmed ? "dimmed" : ""}" d="${arcPath(flow.origin, flow.destination, value, maxPeople)}" stroke="${flowColor(flow)}" stroke-width="${width}"></path>`;
-      }).join("");
+        const color = flowColor(flow);
+        const latLngs = arcLatLngs(flow.origin, flow.destination, value, maxPeople);
+        L.polyline(latLngs, {
+          interactive: false,
+          color: "rgba(21,25,21,.18)",
+          weight: width + 1.5,
+          opacity: dimmed ? .08 : .45,
+          lineCap: "round"
+        }).addTo(flowLayer);
+        L.polyline(latLngs, {
+          color,
+          weight: width,
+          opacity: dimmed ? .15 : highlight ? .98 : .9,
+          lineCap: "round"
+        }).addTo(flowLayer);
+        arrowMarker(latLngs, color).addTo(arrowLayer);
+      });
 
-      nodeLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
+      Object.entries(regionPoints).forEach(([name, point]) => {
         const stat = stats.get(name);
         const r = nodeSize(stat.total, maxHub);
-        const labelX = point.x + r + 5;
-        const labelY = point.y + 4;
-        return `
-          <circle class="node ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${r}"></circle>
-          <text class="node-label" x="${labelX}" y="${labelY}">${point.label}</text>
-        `;
-      }).join("");
+        const center = [point.lat, point.lng];
+        L.circleMarker(center, {
+          interactive: false,
+          radius: r + 15,
+          color: name === spotlight ? "#151915" : "rgba(35,40,32,.42)",
+          weight: name === spotlight ? 2.2 : 1.2,
+          fillColor: name === spotlight ? "#fff3d3" : "#fffdf5",
+          fillOpacity: name === spotlight ? .85 : .72
+        }).addTo(markerLayer);
+        L.circleMarker(center, {
+          radius: r,
+          color: "#fffdf5",
+          weight: name === spotlight ? 3 : 2.2,
+          fillColor: name === spotlight ? "#c15b2a" : "#172018",
+          fillOpacity: 1
+        })
+          .bindTooltip(point.label, {
+            permanent: true,
+            direction: "right",
+            offset: [r + 5, 0],
+            className: "node-label-tooltip"
+          })
+          .addTo(markerLayer);
+      });
     }
 
     function renderMetrics() {

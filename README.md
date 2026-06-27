@@ -1,6 +1,6 @@
 # vanishing-map
 
-Static web app for visualizing South Korea population movement as elevated origin-to-destination arcs.
+Static web app for visualizing South Korea population movement as elevated origin-to-destination arcs on a CARTO basemap.
 
 Repository: `vanishing-map/vanishing-map`
 
@@ -18,6 +18,8 @@ Then open:
 http://127.0.0.1:4173/
 ```
 
+The map uses Leaflet from a CDN and CARTO tiles with OpenStreetMap data, so the basemap needs network access.
+
 ## Current Data
 
 - `data/mois-ppltn-data-stus-sido-od-202605-age-gender.csv`: normalized official MOIS province-level OD matrix for May 2026, with total, gender, and age-by-gender movement counts.
@@ -28,8 +30,8 @@ http://127.0.0.1:4173/
 
 ## Visual Contract
 
-- Basemap: South Korea only. No 3D globe.
-- Arc geometry: curved, elevated-feeling origin-to-destination paths over the basemap.
+- Basemap: Leaflet + CARTO tiles centered on South Korea. No hand-drawn SVG map and no 3D globe.
+- Arc geometry: sampled curved origin-to-destination paths over the live basemap.
 - Line thickness: selected movement volume. Default is `people`; filters can switch the volume basis by age and gender.
 - Color: reserved for future attribute layers. It is not used for direction.
 - Direction: arc direction and arrowhead.
