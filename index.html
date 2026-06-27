@@ -262,11 +262,23 @@
       font-weight: 800;
     }
 
-    .land {
+    #baseLayer {
+      filter: url(#landShadow);
+    }
+
+    .sido-land,
+    .sigungu-land {
       fill: var(--map-land);
       stroke: var(--map-edge);
-      stroke-width: 1.4;
-      filter: url(#landShadow);
+      stroke-width: 1;
+      stroke-linejoin: round;
+      cursor: pointer;
+    }
+
+    .sido-land.is-spotlight,
+    .sigungu-land.is-spotlight {
+      fill: #fff3d3;
+      stroke: #6f7a63;
     }
 
     .province-ring {
@@ -307,13 +319,6 @@
       pointer-events: none;
     }
 
-    .zoom-land {
-      fill: rgba(255,253,245,.58);
-      stroke: rgba(35,40,32,.48);
-      stroke-width: 1.5;
-      filter: url(#landShadow);
-    }
-
     .zoom-title {
       font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
       fill: rgba(35,40,32,.84);
@@ -331,9 +336,10 @@
 
     .arc-shadow {
       fill: none;
-      stroke: rgba(21,25,21,.18);
+      stroke: rgba(21,25,21,.14);
       stroke-linecap: round;
-      transform: translate(2px, 9px);
+      transform: translate(0, 5px);
+      filter: url(#shadowBlur);
     }
 
     .arc {
@@ -352,6 +358,13 @@
     .arc.highlight {
       opacity: .98;
       filter: url(#arcGlowStrong);
+    }
+
+    .arc-sheen {
+      fill: none;
+      stroke: url(#arcSheen);
+      stroke-linecap: round;
+      pointer-events: none;
     }
 
     .legend {
@@ -666,18 +679,22 @@
               <filter id="arcGlowStrong" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="6" stdDeviation="3.2" flood-color="#073b36" flood-opacity=".4" />
               </filter>
-              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L0,6 L7,3 z" fill="#077b72"></path>
+              <filter id="shadowBlur" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="2.4" />
+              </filter>
+              <linearGradient id="arcSheen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff" stop-opacity=".55" />
+                <stop offset="0.5" stop-color="#ffffff" stop-opacity=".12" />
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+              </linearGradient>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M0,1 L9,5 L0,9 z" fill="#2b3128" opacity="0.85"></path>
               </marker>
             </defs>
 
             <rect x="0" y="0" width="900" height="760" fill="transparent"></rect>
-            <text x="92" y="150" class="sea-label">YELLOW SEA</text>
-            <text x="698" y="206" class="sea-label">EAST SEA</text>
-            <text x="650" y="690" class="sea-label">KOREA STRAIT</text>
-            <path class="land" d="M442 44 C493 72 528 112 542 161 C554 205 596 220 613 266 C632 319 603 348 626 398 C651 452 622 499 584 527 C548 552 543 584 512 621 C477 662 423 667 386 635 C349 604 356 564 320 535 C276 499 280 450 308 410 C335 372 315 336 337 293 C359 250 331 207 352 169 C373 130 388 82 442 44 Z"></path>
-            <path class="land" d="M374 687 C409 667 456 668 492 692 C470 725 416 732 374 711 Z"></path>
-
+            <g id="seaLayer"></g>
+            <g id="baseLayer"></g>
             <g id="provinceLayer"></g>
             <g id="shadowLayer"></g>
             <g id="arcLayer"></g>
@@ -736,25 +753,110 @@
   </div>
 
   <script>
-    const regionPoints = {
-      "서울특별시": { x: 418, y: 190, label: "서울" },
-      "인천광역시": { x: 350, y: 211, label: "인천" },
-      "경기도": { x: 430, y: 240, label: "경기" },
-      "강원특별자치도": { x: 533, y: 210, label: "강원" },
-      "충청북도": { x: 477, y: 330, label: "충북" },
-      "충청남도": { x: 382, y: 360, label: "충남" },
-      "세종특별자치시": { x: 433, y: 374, label: "세종" },
-      "대전광역시": { x: 438, y: 408, label: "대전" },
-      "경상북도": { x: 553, y: 405, label: "경북" },
-      "대구광역시": { x: 553, y: 478, label: "대구" },
-      "울산광역시": { x: 636, y: 528, label: "울산" },
-      "부산광역시": { x: 598, y: 574, label: "부산" },
-      "경상남도": { x: 505, y: 548, label: "경남" },
-      "전북특별자치도": { x: 392, y: 478, label: "전북" },
-      "광주광역시": { x: 353, y: 568, label: "광주" },
-      "전라남도": { x: 352, y: 616, label: "전남" },
-      "제주특별자치도": { x: 432, y: 704, label: "제주" }
+    const VIEW_W = 900;
+    const VIEW_H = 760;
+
+    const sidoLabels = {
+      "서울특별시": "서울", "인천광역시": "인천", "경기도": "경기",
+      "강원특별자치도": "강원", "충청북도": "충북", "충청남도": "충남",
+      "세종특별자치시": "세종", "대전광역시": "대전", "경상북도": "경북",
+      "대구광역시": "대구", "울산광역시": "울산", "부산광역시": "부산",
+      "경상남도": "경남", "전북특별자치도": "전북", "광주광역시": "광주",
+      "전라남도": "전남", "제주특별자치도": "제주"
     };
+
+    // Screen coords are filled in per-render from the active projection; labels
+    // and existence are known up front so flow filtering works before load.
+    const regionPoints = {};
+    Object.keys(sidoLabels).forEach((name) => {
+      regionPoints[name] = { label: sidoLabels[name], x: VIEW_W / 2, y: VIEW_H / 2 };
+    });
+
+    let sidoFeatures = [];
+    let sigunguFeatures = [];
+    const regionGeo = {};               // sido name -> [lon, lat] centroid
+    const sigunguByProvince = new Map(); // province -> features[]
+
+    // ---- inline Web Mercator projection (no dependency) ------------------
+    function merc(lon, lat) {
+      return [lon * Math.PI / 180,
+              Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 360)))];
+    }
+
+    function eachRing(geom, fn) {
+      if (geom.type === "Polygon") {
+        geom.coordinates.forEach(fn);
+      } else if (geom.type === "MultiPolygon") {
+        geom.coordinates.forEach((poly) => poly.forEach(fn));
+      }
+    }
+
+    // Fit the given features into the viewBox; returns project(lon,lat)->[x,y].
+    function fitProjection(features, w, h, pad) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      features.forEach((f) => eachRing(f.geometry, (ring) => {
+        ring.forEach(([lon, lat]) => {
+          const [mx, my] = merc(lon, lat);
+          if (mx < minX) minX = mx;
+          if (mx > maxX) maxX = mx;
+          if (my < minY) minY = my;
+          if (my > maxY) maxY = my;
+        });
+      }));
+      const spanX = maxX - minX || 1e-9;
+      const spanY = maxY - minY || 1e-9;
+      const scale = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
+      const offX = (w - spanX * scale) / 2;
+      const offY = (h - spanY * scale) / 2;
+      const project = (lon, lat) => {
+        const [mx, my] = merc(lon, lat);
+        return [offX + (mx - minX) * scale, offY + (maxY - my) * scale];
+      };
+      return project;
+    }
+
+    function geoPath(feature, project) {
+      let d = "";
+      eachRing(feature.geometry, (ring) => {
+        ring.forEach(([lon, lat], i) => {
+          const [x, y] = project(lon, lat);
+          d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
+        });
+        d += "Z";
+      });
+      return d;
+    }
+
+    // Area-weighted centroid of a feature's largest ring (lon/lat space).
+    function ringCentroid(feature) {
+      let best = null, bestLen = -1;
+      eachRing(feature.geometry, (ring) => {
+        if (ring.length > bestLen) { bestLen = ring.length; best = ring; }
+      });
+      let a = 0, cx = 0, cy = 0;
+      for (let i = 0; i < best.length - 1; i++) {
+        const [x0, y0] = best[i];
+        const [x1, y1] = best[i + 1];
+        const cross = x0 * y1 - x1 * y0;
+        a += cross;
+        cx += (x0 + x1) * cross;
+        cy += (y0 + y1) * cross;
+      }
+      if (Math.abs(a) < 1e-12) { // degenerate: fall back to vertex average
+        const sx = best.reduce((s, p) => s + p[0], 0) / best.length;
+        const sy = best.reduce((s, p) => s + p[1], 0) / best.length;
+        return [sx, sy];
+      }
+      a *= 0.5;
+      return [cx / (6 * a), cy / (6 * a)];
+    }
+
+    // Combined centroid of several features (area-weighted by ring count proxy).
+    function groupCentroid(features) {
+      let sx = 0, sy = 0, n = 0;
+      features.forEach((f) => { const [x, y] = ringCentroid(f); sx += x; sy += y; n++; });
+      return [sx / n, sy / n];
+    }
 
     const fallbackCsv = `origin,destination,people,reason_group,source_status,period,origin_code,destination_code
 서울특별시,경기도,22229,population_movement,official_mois,202605,1100000000,4100000000
@@ -768,6 +870,7 @@
 경상남도,부산광역시,2861,population_movement,official_mois,202605,4800000000,2600000000
 인천광역시,서울특별시,2642,population_movement,official_mois,202605,2800000000,1100000000`;
 
+    let proj = null;
     let allSidoFlows = [];
     let flows = [];
     let sigunguFlows = [];
@@ -857,7 +960,31 @@
       setActivePeriod(last);
     }
 
+    async function loadGeo() {
+      try {
+        const [sidoRes, sigRes] = await Promise.all([
+          fetch("data/korea-sido.geojson", { cache: "no-store" }),
+          fetch("data/korea-sigungu.geojson", { cache: "no-store" })
+        ]);
+        sidoFeatures = (await sidoRes.json()).features;
+        sigunguFeatures = (await sigRes.json()).features;
+      } catch {
+        sidoFeatures = [];
+        sigunguFeatures = [];
+      }
+      sidoFeatures.forEach((f) => {
+        regionGeo[f.properties.name] = ringCentroid(f);
+      });
+      sigunguByProvince.clear();
+      sigunguFeatures.forEach((f) => {
+        const p = f.properties.province;
+        if (!sigunguByProvince.has(p)) sigunguByProvince.set(p, []);
+        sigunguByProvince.get(p).push(f);
+      });
+    }
+
     async function loadData() {
+      await loadGeo();
       try {
         const response = await fetch("data/mois-ppltn-data-stus-sido-od-monthly-age-gender.csv", { cache: "no-store" });
         if (!response.ok) throw new Error("CSV fetch failed");
@@ -984,12 +1111,12 @@
 
     function thickness(value, max) {
       const safeMax = Math.max(max, 1);
-      return 1.6 + (Math.log1p(value) / Math.log1p(safeMax)) * 13;
+      return 1.2 + (Math.log1p(value) / Math.log1p(safeMax)) * 6.5;
     }
 
     function nodeSize(value, max) {
       const safeMax = Math.max(max, 1);
-      return 5 + (Math.sqrt(value) / Math.sqrt(safeMax)) * 18;
+      return 4 + (Math.sqrt(value) / Math.sqrt(safeMax)) * 12;
     }
 
     function arcPath(origin, destination, people, maxPeople) {
@@ -998,7 +1125,7 @@
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.hypot(dx, dy);
-      const lift = Math.min(190, Math.max(42, dist * .34 + thickness(people, maxPeople) * 4));
+      const lift = Math.min(170, Math.max(36, dist * .42 + thickness(people, maxPeople) * 2));
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2 - lift;
       const side = dx >= 0 ? 1 : -1;
@@ -1007,6 +1134,12 @@
       const c2x = (b.x + mx) / 2 - side * 18;
       const c2y = (b.y + my) / 2;
       return `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+    }
+
+    // Ground projection of an arc: the straight chord between endpoints, drawn
+    // faint and offset down so the lifted arc reads as floating above the map.
+    function groundPath(ax, ay, bx, by) {
+      return `M ${ax} ${ay} L ${bx} ${by}`;
     }
 
     function flowColor(flow) {
@@ -1031,20 +1164,49 @@
       const stats = hubStats(flows);
       const maxHub = Math.max(...Array.from(stats.values()).map((d) => d.total), 1);
 
+      const seaLayer = document.getElementById("seaLayer");
+      const baseLayer = document.getElementById("baseLayer");
       const provinceLayer = document.getElementById("provinceLayer");
       const shadowLayer = document.getElementById("shadowLayer");
       const arcLayer = document.getElementById("arcLayer");
       const nodeLayer = document.getElementById("nodeLayer");
 
+      // Fit the projection to all of South Korea and place each node at its
+      // province centroid in screen space.
+      if (sidoFeatures.length) {
+        proj = fitProjection(sidoFeatures, VIEW_W, VIEW_H, 70);
+        Object.keys(regionPoints).forEach((name) => {
+          const c = regionGeo[name];
+          if (c) {
+            const [x, y] = proj(c[0], c[1]);
+            regionPoints[name].x = x;
+            regionPoints[name].y = y;
+          }
+        });
+      }
+
+      seaLayer.innerHTML = `
+        <text x="118" y="196" class="sea-label">YELLOW SEA</text>
+        <text x="772" y="250" class="sea-label">EAST SEA</text>
+        <text x="540" y="726" class="sea-label">KOREA STRAIT</text>
+      `;
+
+      baseLayer.innerHTML = sidoFeatures.map((f) => {
+        const name = f.properties.name;
+        const cls = name === spotlight ? "sido-land is-spotlight" : "sido-land";
+        return `<path class="${cls}" d="${geoPath(f, proj)}" data-region="${name}"></path>`;
+      }).join("");
+
       provinceLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
-        const size = nodeSize(stats.get(name).total, maxHub) + 15;
+        const size = nodeSize(stats.get(name).total, maxHub) + 8;
         return `<circle class="province-ring ${name === spotlight ? "spotlight" : ""}" cx="${point.x}" cy="${point.y}" r="${size}" data-region="${name}"></circle>`;
       }).join("");
 
       shadowLayer.innerHTML = shown.map((flow) => {
-        const value = flowValue(flow);
-        const width = thickness(value, maxPeople);
-        return `<path class="arc-shadow" d="${arcPath(flow.origin, flow.destination, value, maxPeople)}" stroke-width="${width}"></path>`;
+        const a = regionPoints[flow.origin];
+        const b = regionPoints[flow.destination];
+        const width = thickness(flowValue(flow), maxPeople);
+        return `<path class="arc-shadow" d="${groundPath(a.x, a.y, b.x, b.y)}" stroke-width="${width}"></path>`;
       }).join("");
 
       arcLayer.innerHTML = shown.map((flow) => {
@@ -1052,7 +1214,9 @@
         const width = thickness(value, maxPeople);
         const highlight = spotlight !== "전체" && (flow.origin === spotlight || flow.destination === spotlight);
         const dimmed = spotlight !== "전체" && !highlight;
-        return `<path class="arc ${highlight ? "highlight" : ""} ${dimmed ? "dimmed" : ""}" d="${arcPath(flow.origin, flow.destination, value, maxPeople)}" stroke="${flowColor(flow)}" stroke-width="${width}"></path>`;
+        const d = arcPath(flow.origin, flow.destination, value, maxPeople);
+        const sheen = dimmed ? "" : `<path class="arc-sheen" d="${d}" stroke-width="${Math.max(1, width * 0.5)}"></path>`;
+        return `<path class="arc ${highlight ? "highlight" : ""} ${dimmed ? "dimmed" : ""}" d="${d}" stroke="${flowColor(flow)}" stroke-width="${width}"></path>${sheen}`;
       }).join("");
 
       nodeLayer.innerHTML = Object.entries(regionPoints).map(([name, point]) => {
@@ -1069,20 +1233,19 @@
       }).join("");
     }
 
-    function sigunguLayout(province, stats) {
-      const rows = Array.from(stats.entries()).sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0], "ko-KR"));
+    // Place each CSV sigungu node at the projected centroid of its real
+    // polygon(s) (folded by `match` so split 시 land at one combined centroid).
+    function buildSigunguPoints(feats, project) {
+      const groups = new Map();
+      feats.forEach((f) => {
+        const m = f.properties.match;
+        if (!groups.has(m)) groups.set(m, []);
+        groups.get(m).push(f);
+      });
       const points = new Map();
-      const cx = 450;
-      const cy = 386;
-      rows.forEach(([name], index) => {
-        if (index === 0) {
-          points.set(name, { x: cx, y: cy, label: name });
-          return;
-        }
-        const angle = index * 2.3999632297;
-        const band = Math.sqrt(index);
-        const x = cx + Math.cos(angle) * Math.min(300, 54 + band * 52);
-        const y = cy + Math.sin(angle) * Math.min(218, 42 + band * 38);
+      groups.forEach((fs, name) => {
+        const [lon, lat] = groupCentroid(fs);
+        const [x, y] = project(lon, lat);
         points.set(name, { x, y, label: name });
       });
       return points;
@@ -1104,48 +1267,61 @@
 
     function renderSigunguMap() {
       const province = selectedProvince;
+      const feats = sigunguByProvince.get(province) || [];
       const stats = sigunguStats(province);
       const rows = Array.from(stats.entries());
       const shown = activeSigunguFlows();
-      const points = sigunguLayout(province, stats);
-      const maxPeople = Math.max(...shown.map((flow) => flowValue(flow)), 1);
-      const maxHub = Math.max(...rows.map(([, stat]) => stat.total), 1);
 
+      const seaLayer = document.getElementById("seaLayer");
+      const baseLayer = document.getElementById("baseLayer");
       const provinceLayer = document.getElementById("provinceLayer");
       const shadowLayer = document.getElementById("shadowLayer");
       const arcLayer = document.getElementById("arcLayer");
       const nodeLayer = document.getElementById("nodeLayer");
 
-      provinceLayer.innerHTML = `
-        <path class="zoom-land" d="M174 142 C270 70 507 62 651 116 C776 163 809 283 761 412 C719 526 613 640 453 658 C291 677 154 598 118 468 C82 337 83 210 174 142 Z"></path>
-        <text class="zoom-title" x="70" y="78">${regionPoints[province]?.label || province} 시군구</text>
-      `;
+      seaLayer.innerHTML = "";
+      const title = `<text class="zoom-title" x="64" y="62">${regionPoints[province]?.label || province} 시군구</text>`;
 
-      if (!rows.length) {
+      if (!feats.length || !rows.length) {
+        baseLayer.innerHTML = "";
+        provinceLayer.innerHTML = title;
         shadowLayer.innerHTML = "";
         arcLayer.innerHTML = "";
-        nodeLayer.innerHTML = `<text class="empty-state" x="450" y="384">시군구 OD CSV가 아직 없습니다.</text>`;
+        nodeLayer.innerHTML = `<text class="empty-state" x="450" y="384">시군구 데이터가 없습니다.</text>`;
         return;
       }
 
+      proj = fitProjection(feats, VIEW_W, VIEW_H, 80);
+      const points = buildSigunguPoints(feats, proj);
+      const maxPeople = Math.max(...shown.map((flow) => flowValue(flow)), 1);
+      const maxHub = Math.max(...rows.map(([, stat]) => stat.total), 1);
+
+      baseLayer.innerHTML = feats.map((f) =>
+        `<path class="sigungu-land" d="${geoPath(f, proj)}"></path>`).join("");
+      provinceLayer.innerHTML = title;
+
       shadowLayer.innerHTML = shown.map((flow) => {
-        const value = flowValue(flow);
-        const path = sigunguArcPath(flow, points, value, maxPeople);
-        return path ? `<path class="arc-shadow" d="${path}" stroke-width="${thickness(value, maxPeople)}"></path>` : "";
+        const a = points.get(flow.origin);
+        const b = points.get(flow.destination);
+        if (!a || !b) return "";
+        return `<path class="arc-shadow" d="${groundPath(a.x, a.y, b.x, b.y)}" stroke-width="${thickness(flowValue(flow), maxPeople)}"></path>`;
       }).join("");
 
       arcLayer.innerHTML = shown.map((flow) => {
         const value = flowValue(flow);
-        const path = sigunguArcPath(flow, points, value, maxPeople);
-        return path ? `<path class="arc highlight" d="${path}" stroke="var(--arc-warm)" stroke-width="${thickness(value, maxPeople)}"></path>` : "";
+        const d = sigunguArcPath(flow, points, value, maxPeople);
+        if (!d) return "";
+        const width = thickness(value, maxPeople);
+        return `<path class="arc highlight" d="${d}" stroke="var(--arc-warm)" stroke-width="${width}"></path><path class="arc-sheen" d="${d}" stroke-width="${Math.max(1, width * 0.5)}"></path>`;
       }).join("");
 
       nodeLayer.innerHTML = rows.map(([name, stat]) => {
         const point = points.get(name);
+        if (!point) return "";
         const r = nodeSize(stat.total, maxHub);
         const netClass = stat.in >= stat.out ? "spotlight" : "";
         return `
-          <circle class="province-ring" cx="${point.x}" cy="${point.y}" r="${r + 12}"></circle>
+          <circle class="province-ring" cx="${point.x}" cy="${point.y}" r="${r + 10}"></circle>
           <circle class="node ${netClass}" cx="${point.x}" cy="${point.y}" r="${r}"></circle>
           <text class="node-label" x="${point.x + r + 5}" y="${point.y + 4}">${name}</text>
         `;
